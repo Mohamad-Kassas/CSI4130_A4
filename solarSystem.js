@@ -67,17 +67,17 @@ function createSolarSystem() {
   scene.add(solarSystem)
 
   // Create sun and add to solar system
-  const sun = createPlanet({ x: 0, y: 0, z: 0 }, 5, "yellow", 32)
+  const sun = createPlanet({ x: 0, y: 0, z: 0 }, 5, "yellow")
   solarSystem.add(sun)
 
   // Create earth group with earth and moon, then add to solar system
-  const earth = createPlanet({ x: 0, y: 0, z: 0 }, 2, "blue", 8)
-  const moon = createPlanet({ x: 0, y: 3, z: 0 }, 0.5, "grey", 8)
+  const earth = createPlanet({ x: 0, y: 0, z: 0 }, 2, "blue")
+  const moon = createPlanet({ x: 0, y: 3, z: 0 }, 0.5, "grey")
   const earthGroup = createGroup([earth, moon], { x: 15, y: 0, z: 0 })
   solarSystem.add(earthGroup)
 
   // Create saturn group with planet and ring, then add to solar system
-  const saturn = createPlanet({ x: 0, y: 0, z: 0 }, 3, "saddlebrown", 16)
+  const saturn = createPlanet({ x: 0, y: 0, z: 0 }, 3, "saddlebrown")
   const ring = createRing({ x: 0, y: 0, z: 0 }, 4, 0.5, "dimgray")
   const saturnGroup = createGroup([saturn, ring], {
     x: 35 * Math.cos(Math.PI / 6),
@@ -90,9 +90,9 @@ function createSolarSystem() {
 }
 
 // Creates a planet mesh at a given position with specified radius, color, and segment count
-function createPlanet(pos, radius, color, segments = 32) {
+function createPlanet(pos, radius, color) {
   const material = new THREE.MeshBasicMaterial({ color })
-  const geometry = new THREE.SphereGeometry(radius, segments, segments)
+  const geometry = new THREE.SphereGeometry(radius, 32, 32)
   const planet = new THREE.Mesh(geometry, material)
   planet.position.set(pos.x, pos.y, pos.z)
   return planet
@@ -101,7 +101,7 @@ function createPlanet(pos, radius, color, segments = 32) {
 // Creates a ring mesh at a given position with specified ring radius, tube thickness, and color
 function createRing(pos, ringRadius, tubeThickness, color) {
   const material = new THREE.MeshBasicMaterial({ color })
-  const geometry = new THREE.TorusGeometry(ringRadius, tubeThickness, 32, 16)
+  const geometry = new THREE.TorusGeometry(ringRadius, tubeThickness, 32, 32)
   const ring = new THREE.Mesh(geometry, material)
   ring.position.set(pos.x, pos.y, pos.z)
   ring.scale.z = 0.1
