@@ -1,0 +1,24 @@
+{
+  "name": "csi4130_a4",
+  "version": "1.0.0",
+  "description": "",
+  "main": "solar.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mohamad-Kassas/CSI4130_A4.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Mohamad-Kassas/CSI4130_A4/issues"
+  },
+  "homepage": "https://github.com/Mohamad-Kassas/CSI4130_A4#readme",
+  "dependencies": {
+    "dat.gui": "^0.7.9",
+    "three": "^0.174.0"
+  }
+}
