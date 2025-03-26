@@ -7,7 +7,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 
 let scene, camera, renderer, composer, gui
 
-// Main: sets up renderer, scene, camera, and solar system components
+// Main: sets up renderer, scene, camera, controls, composer, and solar system components
 function main() {
   renderer = new THREE.WebGLRenderer()
   renderer.setClearColor(new THREE.Color(0x000000))
@@ -45,16 +45,16 @@ function initCamera() {
   return camera
 }
 
-// Initialize the controls
+// Initialize orbit controls and GUI
 function initControls() {
   const orbitControls = new OrbitControls(camera, renderer.domElement)
   const gui = new GUI()
   const controls = { temp: 0 }
   gui.add(controls, "temp", -10, 10).onChange(controls.redraw)
-
   return gui
 }
 
+// Initialize the composer
 function initComposer() {
   composer = new EffectComposer(renderer)
   composer.addPass(new RenderPass(scene, camera))
@@ -64,27 +64,51 @@ function initComposer() {
 // Create the solar system
 function createSolarSystem() {
   const solarSystem = new THREE.Group()
-  scene.add(solarSystem)
 
-  // Create sun and add to solar system
-  const sun = createPlanet({ x: 0, y: 0, z: 0 }, 5, "yellow")
+  // Create the Sun
+  const sun = createPlanet({ x: 0, y: 0, z: 0 }, 5, 0xffff00)
   solarSystem.add(sun)
 
-  // Create earth group with earth and moon, then add to solar system
-  const earth = createPlanet({ x: 0, y: 0, z: 0 }, 2, "blue")
-  const moon = createPlanet({ x: 0, y: 3, z: 0 }, 0.5, "grey")
-  const earthGroup = createGroup([earth, moon], { x: 15, y: 0, z: 0 })
+  // Mercury
+  const mercury = createPlanet({ x: 0, y: 0, z: 0 }, 0.5, 0x808080)
+  const mercuryGroup = createGroup([mercury], { x: 10, y: 0, z: 0 })
+  solarSystem.add(mercuryGroup)
+
+  // Venus
+  const venus = createPlanet({ x: 0, y: 0, z: 0 }, 0.8, 0xE06900)
+  const venusGroup = createGroup([venus], { x: 15, y: 0, z: 0 })
+  solarSystem.add(venusGroup)
+
+  // Earth
+  const earth = createPlanet({ x: 0, y: 0, z: 0 }, 1, 0x0000ff)
+  const earthGroup = createGroup([earth], { x: 20, y: 0, z: 0 })
   solarSystem.add(earthGroup)
 
-  // Create saturn group with planet and ring, then add to solar system
-  const saturn = createPlanet({ x: 0, y: 0, z: 0 }, 3, "saddlebrown")
-  const ring = createRing({ x: 0, y: 0, z: 0 }, 4, 0.5, "dimgray")
-  const saturnGroup = createGroup([saturn, ring], {
-    x: 35 * Math.cos(Math.PI / 6),
-    y: 35 * Math.sin(Math.PI / 6),
-    z: 0,
-  })
+  // Mars
+  const mars = createPlanet({ x: 0, y: 0, z: 0 }, 0.6, 0xff0000)
+  const marsGroup = createGroup([mars], { x: 25, y: 0, z: 0 })
+  solarSystem.add(marsGroup)
+
+  // Jupiter
+  const jupiter = createPlanet({ x: 0, y: 0, z: 0 }, 2, 0xD3A15F)
+  const jupiterGroup = createGroup([jupiter], { x: 35, y: 0, z: 0 })
+  solarSystem.add(jupiterGroup)
+
+  // Saturn with ring
+  const saturn = createPlanet({ x: 0, y: 0, z: 0 }, 1.8, 0xf4a460)
+  const ring = createRing({ x: 0, y: 0, z: 0 }, 3, 0.3, 0x696969)
+  const saturnGroup = createGroup([saturn, ring], { x: 45, y: 0, z: 0 })
   solarSystem.add(saturnGroup)
+
+  // Uranus
+  const uranus = createPlanet({ x: 0, y: 0, z: 0 }, 1.2, 0xadd8e6)
+  const uranusGroup = createGroup([uranus], { x: 55, y: 0, z: 0 })
+  solarSystem.add(uranusGroup)
+
+  // Neptune
+  const neptune = createPlanet({ x: 0, y: 0, z: 0 }, 1.2, 0x0000ff)
+  const neptuneGroup = createGroup([neptune], { x: 65, y: 0, z: 0 })
+  solarSystem.add(neptuneGroup)
 
   return solarSystem
 }
@@ -116,7 +140,7 @@ function createGroup(children, pos) {
   return group
 }
 
-// Creates a star field with 2000 stars
+// Creates a star field with 3000 stars
 function createStarField() {
   const starGeometry = new THREE.BufferGeometry()
   const starCount = 3000
@@ -155,6 +179,7 @@ function createStarField() {
     sizeAttenuation: true,
     vertexColors: true,
     map: disc,
+    transparent: true,
   })
   const starField = new THREE.Points(starGeometry, starMaterial)
 
@@ -167,7 +192,7 @@ function addStarLight() {
     new THREE.Vector2(window.innerWidth, window.innerHeight),
     1.5, // strength
     0.4, // radius
-    0.2 // threshold
+    0.3 // threshold
   )
   composer.addPass(bloomPass)
 }
