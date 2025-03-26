@@ -6,7 +6,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
 
-let scene, camera, renderer, composer, gui
+let scene, camera, renderer, composer, gui, controls, orbitGroups, startAnimation
 
 function main() {
   renderer = new THREE.WebGLRenderer()
@@ -23,9 +23,14 @@ function main() {
 
   setupLighting()
 
-  loadSolarSystem((planetGroup) => {
+  orbitGroups = []
+
+  loadSolarSystem((orbitGroup) => {
     // Receive each loaded planet and add it to the scene
-    scene.add(planetGroup)
+    scene.add(orbitGroup)
+    orbitGroups.push(orbitGroup)
+  }).then((solarSystem) => {
+    startAnimation = true
   })
 
   scene.add(createStarField())
@@ -50,8 +55,8 @@ function initCamera() {
 function initControls() {
   new OrbitControls(camera, renderer.domElement)
   gui = new GUI()
-  const params = { temp: 0 }
-  gui.add(params, "temp", -10, 10)
+  controls = { speed: 1 }
+  gui.add(controls, "speed", -10, 10)
   return gui
 }
 
@@ -130,6 +135,16 @@ function createStarField() {
 
 function animate() {
   requestAnimationFrame(animate)
+
+  // After the solar system is loaded, rotate each planet around the sun
+  if (startAnimation) {
+    orbitGroups.forEach((orbitGroup) => {
+      if (orbitGroup.userData.orbitSpeed) {
+        orbitGroup.rotation.y += orbitGroup.userData.orbitSpeed * controls.speed
+      }
+    })
+  }
+
   composer.render()
 }
 
