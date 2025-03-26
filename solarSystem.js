@@ -4,6 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 
 let scene, camera, renderer, composer, gui
 
@@ -21,14 +22,14 @@ function main() {
   gui = initControls()
   composer = initComposer()
 
-  scene.add(createSolarSystem())
+  setupLighting()
+
+  createSolarSystem().then((solarSystem) => {
+    scene.add(solarSystem)
+  })
+
   scene.add(createStarField())
-
-  // Add bloom effect to the stars (and sun)
-  addStarLight()
-
   animate()
-
   window.addEventListener("resize", onResize, true)
 }
 
@@ -61,83 +62,101 @@ function initComposer() {
   return composer
 }
 
-// Create the solar system
-function createSolarSystem() {
-  const solarSystem = new THREE.Group()
+// Setup realistic lighting with star light effect
+function setupLighting() {
+  // Add bloom (star light) effect
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.5, // strength
+    0.4, // radius
+    0.5 // threshold
+  )
+  composer.addPass(bloomPass)
 
-  // Create the Sun
-  const sun = createPlanet({ x: 0, y: 0, z: 0 }, 5, 0xffff00)
+  // Add ambient light
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.2)
+  scene.add(ambientLight)
+
+  // Add point light from the sun
+  const pointLight = new THREE.PointLight(0xffffff, 100, 1000)
+  scene.add(pointLight)
+}
+
+// Create the sun at the center of the solar system
+function createSun() {
+  const geometry = new THREE.SphereGeometry(5, 32, 32)
+  const material = new THREE.MeshBasicMaterial({ color: 0xffff00 })
+  const sun = new THREE.Mesh(geometry, material)
+  sun.position.set(0, 0, 0)
+  return sun
+}
+
+// Create the solar system with the sun and all planets
+async function createSolarSystem() {
+  const solarSystem = new THREE.Group()
+  const sun = createSun()
   solarSystem.add(sun)
 
-  // Mercury
-  const mercury = createPlanet({ x: 0, y: 0, z: 0 }, 0.5, 0x808080)
-  const mercuryGroup = createGroup([mercury], { x: 10, y: 0, z: 0 })
-  solarSystem.add(mercuryGroup)
+  // Define the properties of each planet
+  const properties = [
+    { name: "mercury", distance: 10, scale: 2 },
+    { name: "venus", distance: 15, scale: 3 },
+    { name: "earth", distance: 22, scale: 3.5 },
+    { name: "mars", distance: 29, scale: 2.5 },
+    { name: "jupiter", distance: 40, scale: 6 },
+    { name: "saturn", distance: 50, scale: 5 },
+    { name: "uranus", distance: 60, scale: 4.5 },
+    { name: "neptune", distance: 70, scale: 4 },
+  ]
 
-  // Venus
-  const venus = createPlanet({ x: 0, y: 0, z: 0 }, 0.8, 0xE06900)
-  const venusGroup = createGroup([venus], { x: 15, y: 0, z: 0 })
-  solarSystem.add(venusGroup)
-
-  // Earth
-  const earth = createPlanet({ x: 0, y: 0, z: 0 }, 1, 0x0000ff)
-  const earthGroup = createGroup([earth], { x: 20, y: 0, z: 0 })
-  solarSystem.add(earthGroup)
-
-  // Mars
-  const mars = createPlanet({ x: 0, y: 0, z: 0 }, 0.6, 0xff0000)
-  const marsGroup = createGroup([mars], { x: 25, y: 0, z: 0 })
-  solarSystem.add(marsGroup)
-
-  // Jupiter
-  const jupiter = createPlanet({ x: 0, y: 0, z: 0 }, 2, 0xD3A15F)
-  const jupiterGroup = createGroup([jupiter], { x: 35, y: 0, z: 0 })
-  solarSystem.add(jupiterGroup)
-
-  // Saturn with ring
-  const saturn = createPlanet({ x: 0, y: 0, z: 0 }, 1.8, 0xf4a460)
-  const ring = createRing({ x: 0, y: 0, z: 0 }, 3, 0.3, 0x696969)
-  const saturnGroup = createGroup([saturn, ring], { x: 45, y: 0, z: 0 })
-  solarSystem.add(saturnGroup)
-
-  // Uranus
-  const uranus = createPlanet({ x: 0, y: 0, z: 0 }, 1.2, 0xadd8e6)
-  const uranusGroup = createGroup([uranus], { x: 55, y: 0, z: 0 })
-  solarSystem.add(uranusGroup)
-
-  // Neptune
-  const neptune = createPlanet({ x: 0, y: 0, z: 0 }, 1.2, 0x0000ff)
-  const neptuneGroup = createGroup([neptune], { x: 65, y: 0, z: 0 })
-  solarSystem.add(neptuneGroup)
+  // Load each planet model and add it to the solar system
+  for (const property of properties) {
+    const planetGroup = new THREE.Group()
+    // Set the x position from the sun
+    planetGroup.position.set(property.distance, 0, 0)
+    try {
+      const planetModel = await loadPlanetModel(property.name, property.scale)
+      planetGroup.add(planetModel)
+    } catch (error) {
+      console.error(`Failed to load model for ${property.name}`, error)
+    }
+    solarSystem.add(planetGroup)
+  }
 
   return solarSystem
 }
 
-// Creates a planet mesh at a given position with specified radius, color, and segment count
-function createPlanet(pos, radius, color) {
-  const material = new THREE.MeshBasicMaterial({ color })
-  const geometry = new THREE.SphereGeometry(radius, 32, 32)
-  const planet = new THREE.Mesh(geometry, material)
-  planet.position.set(pos.x, pos.y, pos.z)
-  return planet
+// Load a planet model, normalize, and scale it
+function loadPlanetModel(planetName, desiredScale) {
+  return new Promise((resolve) => {
+    const loader = new GLTFLoader()
+    const url = `shader/${planetName}/scene.gltf`
+    loader.load(
+      url,
+      (gltf) => {
+        const model = gltf.scene
+        // Normalize and scale the model
+        normalizeModel(model)
+        model.scale.multiplyScalar(desiredScale)
+        resolve(model)
+      },
+      undefined,
+      (error) => {
+        console.log(`Error loading model for ${planetName}:`, error)
+      }
+    )
+  })
 }
 
-// Creates a ring mesh at a given position with specified ring radius, tube thickness, and color
-function createRing(pos, ringRadius, tubeThickness, color) {
-  const material = new THREE.MeshBasicMaterial({ color })
-  const geometry = new THREE.TorusGeometry(ringRadius, tubeThickness, 32, 32)
-  const ring = new THREE.Mesh(geometry, material)
-  ring.position.set(pos.x, pos.y, pos.z)
-  ring.scale.z = 0.1
-  return ring
-}
-
-// Creates a group with given children and position, then adds it to the parent
-function createGroup(children, pos) {
-  const group = new THREE.Group()
-  group.position.set(pos.x, pos.y, pos.z)
-  children.forEach((child) => group.add(child))
-  return group
+// Normalize a model so that it fits inside a unit bounding box
+function normalizeModel(object) {
+  const box = new THREE.Box3().setFromObject(object)
+  const size = new THREE.Vector3()
+  box.getSize(size)
+  const maxDim = Math.max(size.x, size.y, size.z)
+  if (maxDim === 0) return
+  const scale = 1 / maxDim
+  object.scale.set(scale, scale, scale)
 }
 
 // Creates a star field with 3000 stars
@@ -184,17 +203,6 @@ function createStarField() {
   const starField = new THREE.Points(starGeometry, starMaterial)
 
   return starField
-}
-
-// Adds a bloom effect to the scene
-function addStarLight() {
-  const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    1.5, // strength
-    0.4, // radius
-    0.3 // threshold
-  )
-  composer.addPass(bloomPass)
 }
 
 function animate() {

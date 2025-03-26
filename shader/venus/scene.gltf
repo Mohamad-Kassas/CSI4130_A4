@@ -1,0 +1,236 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v4.0.2",
+    "version": "2.0",
+    "extras": {
+      "author": "Shady Tex (https://sketchfab.com/ShadyTex4u)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/venus-realistic-8k-2aa7e3beae7841299376808bcf3306b8",
+      "title": "Venus  Realistic 8K"
+    }
+  },
+  "accessors": [
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 10060,
+      "max": [1.6396583318710327, 1.6396586894989014, 1.6399999856948853],
+      "min": [-1.6396576166152954, -1.6396580934524536, -1.6399999856948853],
+      "bufferView": 0,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 10060,
+      "bufferView": 0,
+      "byteOffset": 12
+    },
+    {
+      "type": "VEC4",
+      "componentType": 5126,
+      "count": 10060,
+      "bufferView": 0,
+      "byteOffset": 24
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 10060,
+      "bufferView": 0,
+      "byteOffset": 40
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 10060,
+      "bufferView": 0,
+      "byteOffset": 48
+    },
+    {
+      "type": "SCALAR",
+      "componentType": 5125,
+      "count": 58368,
+      "bufferView": 1,
+      "byteOffset": 0
+    },
+    {
+      "type": "SCALAR",
+      "componentType": 5125,
+      "count": 23040,
+      "bufferView": 1,
+      "byteOffset": 233472
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 4024,
+      "max": [0.9997082948684692, 0.9997079968452454, 1],
+      "min": [-0.9997089505195618, -0.9997085332870483, -1],
+      "bufferView": 2,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 4024,
+      "bufferView": 2,
+      "byteOffset": 12
+    },
+    {
+      "type": "VEC4",
+      "componentType": 5126,
+      "count": 4024,
+      "bufferView": 2,
+      "byteOffset": 24
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 4024,
+      "bufferView": 2,
+      "byteOffset": 40
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 4024,
+      "bufferView": 2,
+      "byteOffset": 48
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 563360,
+      "byteStride": 56,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 563360,
+      "byteLength": 325632,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 888992,
+      "byteLength": 225344,
+      "byteStride": 56,
+      "target": 34962
+    }
+  ],
+  "samplers": [
+    { "magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497 }
+  ],
+  "textures": [
+    { "source": 0, "sampler": 0 },
+    { "source": 1, "sampler": 0 },
+    { "source": 2, "sampler": 0 }
+  ],
+  "images": [
+    { "mimeType": "image/jpeg", "uri": "textures/Material.001_baseColor.jpeg" },
+    { "mimeType": "image/png", "uri": "textures/Material.001_normal.png" },
+    { "mimeType": "image/jpeg", "uri": "textures/Material_baseColor.jpeg" }
+  ],
+  "buffers": [{ "uri": "scene.bin", "byteLength": 1114336 }],
+  "materials": [
+    {
+      "name": "Material.001",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "roughnessFactor": 0.8211145618000169,
+        "metallicFactor": 0,
+        "baseColorTexture": { "index": 0 }
+      },
+      "emissiveFactor": [
+        0.12267433052585386, 0.12267433052585386, 0.12267433052585386
+      ],
+      "emissiveTexture": { "index": 0 },
+      "normalTexture": { "index": 1 }
+    },
+    {
+      "name": "Material",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [1, 1, 1, 0.7218485982212474],
+        "roughnessFactor": 0.624811857685362,
+        "metallicFactor": 0,
+        "baseColorTexture": { "index": 2 }
+      },
+      "normalTexture": { "index": 1, "scale": 0.10930417358847079 },
+      "extensions": { "KHR_materials_specular": { "specularFactor": 0 } }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "venus_Material.001_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TANGENT": 2,
+            "TEXCOORD_0": 3,
+            "TEXCOORD_1": 4
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 5
+        }
+      ]
+    },
+    {
+      "name": "atmosphere_Material_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 8,
+            "POSITION": 7,
+            "TANGENT": 9,
+            "TEXCOORD_0": 10,
+            "TEXCOORD_1": 11
+          },
+          "mode": 4,
+          "material": 1,
+          "indices": 6
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Sketchfab_model",
+      "rotation": [-0.7071067811865475, 0, 0, 0.7071067811865476],
+      "children": [1]
+    },
+    {
+      "name": "8955ab6fafeb473191a844fa6afd055e.fbx",
+      "rotation": [0.7071067811865475, 0, 0, 0.7071067811865476],
+      "scale": [
+        0.009999999776482582, 0.009999999776482582, 0.009999999776482582
+      ],
+      "children": [2]
+    },
+    { "name": "RootNode", "children": [3, 5] },
+    {
+      "name": "venus",
+      "rotation": [-0.7071068387877036, 0, 0, 0.7071067235853866],
+      "scale": [791.3989868164062, 791.3989868164064, 791.3989868164064],
+      "children": [4]
+    },
+    { "name": "venus_Material.001_0", "mesh": 0 },
+    {
+      "name": "atmosphere",
+      "rotation": [-0.7071068387877038, 0, 0, 0.7071067235853866],
+      "scale": [1337.0272216796875, 1337.0272216796875, 1337.0272216796875],
+      "children": [6]
+    },
+    { "name": "atmosphere_Material_0", "mesh": 1 }
+  ],
+  "scenes": [{ "name": "Sketchfab_Scene", "nodes": [0] }],
+  "scene": 0,
+  "extensionsUsed": ["KHR_materials_specular"]
+}
