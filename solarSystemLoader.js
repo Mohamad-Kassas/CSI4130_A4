@@ -2,20 +2,21 @@ import * as THREE from "three"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 
 // Create the solar system with the sun and 8 planets
-export async function loadSolarSystem() {
+export async function loadSolarSystem(onPlanetLoaded) {
   const solarSystem = new THREE.Group()
   const sun = createSun()
   solarSystem.add(sun)
+  onPlanetLoaded(solarSystem)
 
   // Define the properties of each planet
   const properties = [
     { name: "mercury", distance: 10, scale: 2 },
-    { name: "venus", distance: 15, scale: 3 },
-    { name: "earth", distance: 22, scale: 3.5 },
-    { name: "mars", distance: 29, scale: 2.5 },
+    { name: "venus",   distance: 15, scale: 3 },
+    { name: "earth",   distance: 22, scale: 3.5 },
+    { name: "mars",    distance: 29, scale: 2.5 },
     { name: "jupiter", distance: 40, scale: 6 },
-    { name: "saturn", distance: 50, scale: 5 },
-    { name: "uranus", distance: 60, scale: 4.5 },
+    { name: "saturn",  distance: 50, scale: 5 },
+    { name: "uranus",  distance: 60, scale: 4.5 },
     { name: "neptune", distance: 70, scale: 4 },
   ]
 
@@ -28,6 +29,9 @@ export async function loadSolarSystem() {
     try {
       const planetModel = await loadPlanetModel(property.name, property.scale)
       planetGroup.add(planetModel)
+
+      // Send the planetGroup to the main file for rendering
+      onPlanetLoaded(planetGroup)
     } catch (error) {
       console.error(`Failed to load model for ${property.name}`, error)
     }
@@ -38,7 +42,7 @@ export async function loadSolarSystem() {
 }
 
 // Load a planet model, normalize, and scale it
-export function loadPlanetModel(planetName, desiredScale) {
+function loadPlanetModel(planetName, desiredScale) {
   return new Promise((resolve) => {
     const loader = new GLTFLoader()
     const url = `shader/${planetName}/scene.gltf`

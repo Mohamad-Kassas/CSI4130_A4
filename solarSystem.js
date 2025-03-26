@@ -23,8 +23,9 @@ function main() {
 
   setupLighting()
 
-  loadSolarSystem().then((solarSystem) => {
-    scene.add(solarSystem)
+  loadSolarSystem((planetGroup) => {
+    // Receive each loaded planet and add it to the scene
+    scene.add(planetGroup)
   })
 
   scene.add(createStarField())
