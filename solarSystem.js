@@ -4,8 +4,22 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
+import { degToRad } from "three/src/math/MathUtils.js"
 
-let scene, camera, renderer, composer, gui
+let scene, camera, renderer, composer, gui, orbitControls
+
+// Temporary Capsule Object
+let capsule;
+// Default target planet
+let targetPosition = new THREE.Vector3(31.5 * Math.cos(Math.PI / 6), 35 * Math.sin(Math.PI / 6), 0)
+// Speed of translation
+let moveSpeed = 0.025;
+let traveling = true;
+// Track the current rotation in radians
+let currentRotation = 0; 
+// Speed of landing rotation
+let rotationSpeed = degToRad(0.25)
+
 
 // Main: sets up renderer, scene, camera, and solar system components
 function main() {
@@ -15,8 +29,19 @@ function main() {
   const container = document.createElement("div")
   document.body.appendChild(container)
   container.appendChild(renderer.domElement)
-
+  
   scene = new THREE.Scene()
+
+  // Temporary Capsule Object
+  const material = new THREE.MeshBasicMaterial({ color: "grey" })
+  const geometry = new THREE.CapsuleGeometry(0.5)
+  capsule = new THREE.Mesh(geometry, material)
+  capsule.scale.set(0.1, 0.1, 0.1);
+  capsule.position.set(17.1, 0, 0)
+  capsule.rotation.z = degToRad(90) 
+  scene.add(capsule)
+
+
   camera = initCamera()
   gui = initControls()
   composer = initComposer()
@@ -37,21 +62,59 @@ function initCamera() {
   camera = new THREE.PerspectiveCamera(
     45,
     window.innerWidth / window.innerHeight,
-    1,
+    0.1,
     1000
   )
-  camera.position.z = 100
-  camera.lookAt(scene.position)
+  camera.position.set(capsule.position.x, capsule.position.y, 0.5)
   return camera
 }
 
 // Initialize the controls
 function initControls() {
-  const orbitControls = new OrbitControls(camera, renderer.domElement)
-  const gui = new GUI()
-  const controls = { temp: 0 }
-  gui.add(controls, "temp", -10, 10).onChange(controls.redraw)
+  // Takes over the lookAt function according to documentation
+  orbitControls = new OrbitControls(camera, renderer.domElement)
+  orbitControls.target.set(capsule.position.x, capsule.position.y, capsule.position.z)
 
+  const gui = new GUI()
+  gui.controls = new function () { 
+    this.Animation = "Off"; 
+    this.Target = "Jupiter"
+    this.PastTarget = "Earth"
+
+    
+    this.UpdateTarget = function(){
+      switch (gui.controls.Target){
+        case "Jupiter": 
+          targetPosition = new THREE.Vector3(31.5 * Math.cos(Math.PI / 6), 35 * Math.sin(Math.PI / 6), 0)
+          break
+        case "Earth": 
+          if(this.PastTarget == "Sun Test"){ // If starting postition is the sun we land on left side of earth
+            targetPosition = new THREE.Vector3(13, 0, 0)
+          }
+          else{
+            targetPosition = new THREE.Vector3(17.05, 0, 0)
+          }
+          break
+        case "Sun Test": 
+          targetPosition = new THREE.Vector3(5.05, 0, 0)
+          break
+      }
+    }
+    
+
+    this.ToggleAnimation = function() {
+      if (this.Animation === "Off") {
+        this.Animation = "On";  // Turn animation on
+      } 
+      else {
+        this.Animation = "Off"; // Turn animation off
+      }
+    }
+    
+  }
+  
+  gui.add(gui.controls, "ToggleAnimation").name("Start Animation")
+  gui.add(gui.controls, "Target", ["Jupiter", "Earth", "Sun Test"]).onChange((() => gui.controls.UpdateTarget()));
   return gui
 }
 
@@ -173,15 +236,78 @@ function addStarLight() {
 }
 
 function animate() {
-  requestAnimationFrame(animate)
-  composer.render()
+  requestAnimationFrame(animate);
+
+  // Calculate the direction towards the target
+  const direction = new THREE.Vector3().subVectors(targetPosition, capsule.position);
+  direction.normalize();
+  const distance = capsule.position.distanceTo(targetPosition);
+
+  // Start animation TODO: add collision detection to avoid planets in our path
+  if(gui.controls.Animation == "On"){
+    if (traveling) {
+
+      if (distance > 0.3){
+
+        // Move capsule towards the target
+        capsule.position.add(direction.multiplyScalar(moveSpeed));
+
+        // Update camera position to follow capsule
+        camera.position.set(capsule.position.x, capsule.position.y, 0.5)
+        orbitControls.target.set(capsule.position.x, capsule.position.y, capsule.position.z);
+      }   
+
+
+      // Start rotating by 180 only if the capsule is a certain distance away from the target
+      else if (distance <= 0.3 && currentRotation <= Math.PI) {
+        capsule.rotation.z += rotationSpeed;
+        currentRotation += rotationSpeed;
+      }
+
+      // Start landing 
+      else if(currentRotation >= Math.PI){
+        traveling = false;
+      } 
+    
+    } 
+
+    else if(!traveling){
+
+      if(distance > 0.1){
+
+        // Finalize the landing
+        capsule.position.add(direction.multiplyScalar(moveSpeed));
+
+        // Update camera position and lookAt to follow capsule
+        camera.position.set(capsule.position.x, capsule.position.y, 0.5)
+        orbitControls.target.set(capsule.position.x, capsule.position.y, capsule.position.z);
+      }
+      // Landing over / Reset animation button and save starting planet
+      else{
+        gui.controls.Animation = "Off"
+        gui.controls.PastTarget = gui.controls.Target
+      }
+    }
+ 
+  }
+  // Reset variables 
+  else{
+    traveling = true
+    currentRotation = 0
+  }
+
+  orbitControls.update();
+  composer.render();
 }
 
 // Updates camera and renderer on window resize
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight
   camera.updateProjectionMatrix()
+  
   renderer.setSize(window.innerWidth, window.innerHeight)
+  composer.setSize(window.innerWidth, window.innerHeight)
 }
+
 
 window.onload = main
