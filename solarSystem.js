@@ -8,7 +8,7 @@ import { degToRad } from "three/src/math/MathUtils.js"
 
 let scene, camera, renderer, composer, gui, orbitControls
 
-// Temporary Capsule Object
+// Temporary Capsule Object. 
 let capsule;
 // Default target planet
 let targetPosition = new THREE.Vector3(31.5 * Math.cos(Math.PI / 6), 35 * Math.sin(Math.PI / 6), 0)
