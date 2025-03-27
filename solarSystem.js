@@ -9,7 +9,7 @@ import { degToRad } from "three/src/math/MathUtils.js"
 import { spaceship } from "./spaceship.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
 
-let scene, camera, renderer, composer, gui, controls, orbitGroups, startAnimation
+let scene, camera, renderer, composer, gui, orbitGroups , startAnimation, orbitControls
 
 // Default target planet
 let targetPosition = new THREE.Vector3(31.2 * Math.cos(Math.PI / 6), 35 * Math.sin(Math.PI / 6), 0)
@@ -38,8 +38,6 @@ function main() {
   gui = initControls()
   composer = initComposer()
 
-
-  scene.add(createSolarSystem())
   setupLighting()
 
   orbitGroups = []
@@ -80,7 +78,7 @@ function initControls() {
 
   const gui = new GUI()
   gui.controls = new function () { 
-    this.speed =  1
+    this.speed =  0.2
     this.Animation = "Off"
     this.Target = "Jupiter"
     this.PastTarget = "Earth"
@@ -137,49 +135,11 @@ function initComposer() {
 }
 
 
-
 function CreateSpaceship(){
   spaceship.scale.set(0.05, 0.05, 0.05);
   spaceship.position.set(17.3, 0, 0)
   spaceship.rotation.y = degToRad(-90) 
   return spaceship
-}
-
-// Create the solar system
-function createSolarSystem() {
-  const solarSystem = new THREE.Group()
-  scene.add(solarSystem)
-
-  // Create sun and add to solar system
-  const sun = createPlanet({ x: 0, y: 0, z: 0 }, 5, "yellow")
-  solarSystem.add(sun)
-
-  // Create earth group with earth and moon, then add to solar system
-  const earth = createPlanet({ x: 0, y: 0, z: 0 }, 2, "blue")
-  const moon = createPlanet({ x: 0, y: 3, z: 0 }, 0.5, "grey")
-  const earthGroup = createGroup([earth, moon], { x: 15, y: 0, z: 0 })
-  solarSystem.add(earthGroup)
-
-  // Create saturn group with planet and ring, then add to solar system
-  const saturn = createPlanet({ x: 0, y: 0, z: 0 }, 3, "saddlebrown")
-  const ring = createRing({ x: 0, y: 0, z: 0 }, 4, 0.5, "dimgray")
-  const saturnGroup = createGroup([saturn, ring], {
-    x: 35 * Math.cos(Math.PI / 6),
-    y: 35 * Math.sin(Math.PI / 6),
-    z: 0,
-  })
-  solarSystem.add(saturnGroup)
-
-  return solarSystem
-}
-
-// Creates a planet mesh at a given position with specified radius, color, and segment count
-function createPlanet(pos, radius, color) {
-  const material = new THREE.MeshBasicMaterial({ color })
-  const geometry = new THREE.SphereGeometry(radius, 32, 32)
-  const planet = new THREE.Mesh(geometry, material)
-  planet.position.set(pos.x, pos.y, pos.z)
-  return planet
 }
 
 
@@ -203,6 +163,7 @@ function setupLighting() {
   const pointLight = new THREE.PointLight(0xffffff, 100, 1000)
   scene.add(pointLight)
 }
+
 
 // Creates a star field with 3000 stars
 function createStarField() {
@@ -256,7 +217,7 @@ function animate() {
   if (startAnimation) {
     orbitGroups.forEach((orbitGroup) => {
       if (orbitGroup.userData.orbitSpeed) {
-        orbitGroup.rotation.y += orbitGroup.userData.orbitSpeed * controls.speed
+        orbitGroup.rotation.y += orbitGroup.userData.orbitSpeed * gui.controls.speed
       }
     })
   }
