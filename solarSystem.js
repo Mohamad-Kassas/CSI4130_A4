@@ -1,13 +1,15 @@
-﻿import * as THREE from "three"
+import * as THREE from "three"
 import { GUI } from "dat.gui"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
+
 import { degToRad } from "three/src/math/MathUtils.js"
 import { spaceship } from "./spaceship.js"
+import { loadSolarSystem } from "./solarSystemLoader.js"
 
-let scene, camera, renderer, composer, gui, orbitControls
+let scene, camera, renderer, composer, gui, controls, orbitGroups, startAnimation
 
 // Default target planet
 let targetPosition = new THREE.Vector3(31.2 * Math.cos(Math.PI / 6), 35 * Math.sin(Math.PI / 6), 0)
@@ -20,7 +22,6 @@ let currentRotation = 0
 let rotationSpeed = degToRad(0.25)
 
 
-// Main: sets up renderer, scene, camera, and solar system components
 function main() {
   renderer = new THREE.WebGLRenderer()
   renderer.setClearColor(new THREE.Color(0x000000))
@@ -32,35 +33,30 @@ function main() {
   scene = new THREE.Scene()
   scene.add(CreateSpaceship())
 
-  initLighting()
+
   camera = initCamera()
   gui = initControls()
   composer = initComposer()
 
+
   scene.add(createSolarSystem())
+  setupLighting()
+
+  orbitGroups = []
+
+  loadSolarSystem((orbitGroup) => {
+    // Receive each loaded planet and add it to the scene
+    scene.add(orbitGroup)
+    orbitGroups.push(orbitGroup)
+  }).then((solarSystem) => {
+    startAnimation = true
+  })
+
   scene.add(createStarField())
-  
-
-  // Add bloom effect to the stars (and sun)
-  addStarLight()
-
   animate()
-
   window.addEventListener("resize", onResize, true)
 }
 
-// Initialize the lighting
-function initLighting(){
-  const ambientLight = new THREE.AmbientLight(0x404040)
-  scene.add(ambientLight)
-
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-  directionalLight.position.set(0, 0, 0)
-  scene.add(directionalLight)
-
-  directionalLight.target.position.set(spaceship.position.x, spaceship.position.y, spaceship.position.z)
-  scene.add(directionalLight.target)
-}
 
 // Initialize the camera
 function initCamera() {
@@ -75,6 +71,7 @@ function initCamera() {
 }
 
 
+
 // Initialize the controls
 function initControls() {
   // Takes over the lookAt function according to documentation
@@ -83,7 +80,8 @@ function initControls() {
 
   const gui = new GUI()
   gui.controls = new function () { 
-    this.Animation = "Off"; 
+    this.speed =  1
+    this.Animation = "Off"
     this.Target = "Jupiter"
     this.PastTarget = "Earth"
     this.TargetOrientation = "Right"
@@ -111,7 +109,7 @@ function initControls() {
           break
       }
     }
-    
+
 
     this.ToggleAnimation = function() {
       if (this.Animation === "Off") {
@@ -124,16 +122,20 @@ function initControls() {
     
   }
   
+  gui.add(gui.controls, "speed", -10, 10)
   gui.add(gui.controls, "ToggleAnimation").name("Start Animation")
   gui.add(gui.controls, "Target", ["Jupiter", "Earth", "Sun Test"]).onChange((() => gui.controls.UpdateTarget()))
+
   return gui
 }
 
+// Initialize the composer
 function initComposer() {
   composer = new EffectComposer(renderer)
   composer.addPass(new RenderPass(scene, camera))
   return composer
 }
+
 
 
 function CreateSpaceship(){
@@ -142,7 +144,6 @@ function CreateSpaceship(){
   spaceship.rotation.y = degToRad(-90) 
   return spaceship
 }
-
 
 // Create the solar system
 function createSolarSystem() {
@@ -181,25 +182,29 @@ function createPlanet(pos, radius, color) {
   return planet
 }
 
-// Creates a ring mesh at a given position with specified ring radius, tube thickness, and color
-function createRing(pos, ringRadius, tubeThickness, color) {
-  const material = new THREE.MeshBasicMaterial({ color })
-  const geometry = new THREE.TorusGeometry(ringRadius, tubeThickness, 32, 32)
-  const ring = new THREE.Mesh(geometry, material)
-  ring.position.set(pos.x, pos.y, pos.z)
-  ring.scale.z = 0.1
-  return ring
+
+// Setup realistic lighting with star light effect
+function setupLighting() {
+  // Add bloom (star light) effect
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.5, // strength
+    0.4, // radius
+    0.5 // threshold
+  )
+  composer.addPass(bloomPass)
+
+
+  // Add ambient light
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.2)
+  scene.add(ambientLight)
+
+  // Add point light from the sun
+  const pointLight = new THREE.PointLight(0xffffff, 100, 1000)
+  scene.add(pointLight)
 }
 
-// Creates a group with given children and position, then adds it to the parent
-function createGroup(children, pos) {
-  const group = new THREE.Group()
-  group.position.set(pos.x, pos.y, pos.z)
-  children.forEach((child) => group.add(child))
-  return group
-}
-
-// Creates a star field with 2000 stars
+// Creates a star field with 3000 stars
 function createStarField() {
   const starGeometry = new THREE.BufferGeometry()
   const starCount = 3000
@@ -238,25 +243,23 @@ function createStarField() {
     sizeAttenuation: true,
     vertexColors: true,
     map: disc,
+    transparent: true,
   })
   const starField = new THREE.Points(starGeometry, starMaterial)
 
   return starField
 }
 
-// Adds a bloom effect to the scene
-function addStarLight() {
-  const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    1.5, // strength
-    0.4, // radius
-    0.2 // threshold
-  )
-  composer.addPass(bloomPass)
-}
-
 function animate() {
   requestAnimationFrame(animate);
+  
+  if (startAnimation) {
+    orbitGroups.forEach((orbitGroup) => {
+      if (orbitGroup.userData.orbitSpeed) {
+        orbitGroup.rotation.y += orbitGroup.userData.orbitSpeed * controls.speed
+      }
+    })
+  }
 
   // Calculate the direction towards the target
   var direction = new THREE.Vector3().subVectors(targetPosition, spaceship.position)
