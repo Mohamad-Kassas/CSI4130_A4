@@ -1,0 +1,247 @@
+# exported by https://3dviewer.net
+newmtl material_12
+Kd 0.615686274509804 0.615686274509804 0.615686274509804
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl material
+Kd 0.21568627450980393 0.21568627450980393 0.5764705882352941
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl s
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl s1
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl d
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl Material17
+Kd 0.023529411764705882 0.023529411764705882 0.023529411764705882
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl Material14
+Kd 1 0.6235294117647059 0.07058823529411765
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl Material15
+Kd 0.5647058823529412 0.6705882352941176 0.8705882352941177
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl bluelt2
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl Material16
+Kd 0.9921568627450981 0.1450980392156863 0.027450980392156862
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Vinyl_Gray_1
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Chalk_
+Kd 0.807843137254902 0.8 0.8392156862745098
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __DarkGray_
+Kd 0.08235294117647059 0.08235294117647059 0.08235294117647059
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Charcoal_
+Kd 0.01568627450980392 0.01568627450980392 0.01568627450980392
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl Material3
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Concrete-rough_
+Kd 0.39215686274509803 0.396078431372549 0.3764705882352941
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Vinyl_Gray_3
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __DimGray_
+Kd 0.1411764705882353 0.1411764705882353 0.1411764705882353
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Vinyl_Gray_2
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Gray_
+Kd 0.21568627450980393 0.21568627450980393 0.21568627450980393
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl material_0
+Kd 0.7529411764705882 0.7529411764705882 0.5764705882352941
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Vinyl_Gray_4
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Split_Face_Concrete_Block_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Black_
+Kd 0 0 0
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Blue_Tile_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __OrangeRed_
+Kd 1 0.058823529411764705 0
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Glass_Blue_Tint_
+Kd 0.00392156862745098 0.42745098039215684 0.8784313725490196
+d 0.47843139999999995
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Ashlar_Stone_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Tomato_
+Kd 1 0.12549019607843137 0.06274509803921569
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Tile02_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Paver_Hex_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Silver_
+Kd 0.5254901960784314 0.5254901960784314 0.5254901960784314
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Carpet_Gray_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __DropCeiling_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Chalk_1
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Concrete_Tile_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __LemonChiffon_
+Kd 1 0.9568627450980393 0.611764705882353
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Spanish_Tile_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Pansies_Purple_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __Lime_
+Kd 0 1 0
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0
+newmtl __CorrogateRust_
+Kd 1 1 1
+d 1
+Ka 0 0 0
+Ks 0 0 0
+Ns 0

@@ -4,9 +4,23 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
+
+import { degToRad } from "three/src/math/MathUtils.js"
+import { spaceship } from "./spaceship.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
 
 let scene, camera, renderer, composer, gui, controls, orbitGroups, startAnimation
+
+// Default target planet
+let targetPosition = new THREE.Vector3(31.2 * Math.cos(Math.PI / 6), 35 * Math.sin(Math.PI / 6), 0)
+// Speed of translation
+let moveSpeed = 0.025
+let traveling = true
+// Track the current rotation in radians
+let currentRotation = 0
+// Speed of landing rotation
+let rotationSpeed = degToRad(0.25)
+
 
 function main() {
   renderer = new THREE.WebGLRenderer()
@@ -15,12 +29,17 @@ function main() {
   const container = document.createElement("div")
   document.body.appendChild(container)
   container.appendChild(renderer.domElement)
-
+  
   scene = new THREE.Scene()
+  scene.add(CreateSpaceship())
+
+
   camera = initCamera()
   gui = initControls()
   composer = initComposer()
 
+
+  scene.add(createSolarSystem())
   setupLighting()
 
   orbitGroups = []
@@ -38,25 +57,75 @@ function main() {
   window.addEventListener("resize", onResize, true)
 }
 
+
 // Initialize the camera
 function initCamera() {
   camera = new THREE.PerspectiveCamera(
     45,
     window.innerWidth / window.innerHeight,
-    1,
+    0.1,
     1000
   )
-  camera.position.z = 100
-  camera.lookAt(scene.position)
+  camera.position.set(spaceship.position.x, spaceship.position.y, 1)
   return camera
 }
 
-// Initialize orbit controls and GUI
+
+
+// Initialize the controls
 function initControls() {
-  new OrbitControls(camera, renderer.domElement)
-  gui = new GUI()
-  controls = { speed: 1 }
-  gui.add(controls, "speed", -10, 10)
+  // Takes over the lookAt function according to documentation
+  orbitControls = new OrbitControls(camera, renderer.domElement)
+  orbitControls.target.set(spaceship.position.x, spaceship.position.y, spaceship.position.z)
+
+  const gui = new GUI()
+  gui.controls = new function () { 
+    this.speed =  1
+    this.Animation = "Off"
+    this.Target = "Jupiter"
+    this.PastTarget = "Earth"
+    this.TargetOrientation = "Right"
+
+    // TODO: If we add more planets eventually we need to handle orientation more efficiently 
+    this.UpdateTarget = function(){
+      switch (gui.controls.Target){
+        case "Jupiter": 
+          targetPosition = new THREE.Vector3(31.2 * Math.cos(Math.PI / 6), 35 * Math.sin(Math.PI / 6), 0)
+          this.TargetOrientation = "Right"
+          break
+        case "Earth": 
+          if(this.PastTarget == "Sun Test"){ // If starting postition is the sun we land on left side of earth
+            targetPosition = new THREE.Vector3(12.75, 0, 0)
+            this.TargetOrientation = "Right"
+          }
+          else{
+            targetPosition = new THREE.Vector3(17.3, 0, 0)
+            this.TargetOrientation = "Left"
+          }
+          break
+        case "Sun Test": 
+          targetPosition = new THREE.Vector3(5.3, 0, 0)
+          this.TargetOrientation = "Left"
+          break
+      }
+    }
+
+
+    this.ToggleAnimation = function() {
+      if (this.Animation === "Off") {
+        this.Animation = "On"  // Turn animation on
+      } 
+      else {
+        this.Animation = "Off" // Turn animation off
+      }
+    }
+    
+  }
+  
+  gui.add(gui.controls, "speed", -10, 10)
+  gui.add(gui.controls, "ToggleAnimation").name("Start Animation")
+  gui.add(gui.controls, "Target", ["Jupiter", "Earth", "Sun Test"]).onChange((() => gui.controls.UpdateTarget()))
+
   return gui
 }
 
@@ -66,6 +135,53 @@ function initComposer() {
   composer.addPass(new RenderPass(scene, camera))
   return composer
 }
+
+
+
+function CreateSpaceship(){
+  spaceship.scale.set(0.05, 0.05, 0.05);
+  spaceship.position.set(17.3, 0, 0)
+  spaceship.rotation.y = degToRad(-90) 
+  return spaceship
+}
+
+// Create the solar system
+function createSolarSystem() {
+  const solarSystem = new THREE.Group()
+  scene.add(solarSystem)
+
+  // Create sun and add to solar system
+  const sun = createPlanet({ x: 0, y: 0, z: 0 }, 5, "yellow")
+  solarSystem.add(sun)
+
+  // Create earth group with earth and moon, then add to solar system
+  const earth = createPlanet({ x: 0, y: 0, z: 0 }, 2, "blue")
+  const moon = createPlanet({ x: 0, y: 3, z: 0 }, 0.5, "grey")
+  const earthGroup = createGroup([earth, moon], { x: 15, y: 0, z: 0 })
+  solarSystem.add(earthGroup)
+
+  // Create saturn group with planet and ring, then add to solar system
+  const saturn = createPlanet({ x: 0, y: 0, z: 0 }, 3, "saddlebrown")
+  const ring = createRing({ x: 0, y: 0, z: 0 }, 4, 0.5, "dimgray")
+  const saturnGroup = createGroup([saturn, ring], {
+    x: 35 * Math.cos(Math.PI / 6),
+    y: 35 * Math.sin(Math.PI / 6),
+    z: 0,
+  })
+  solarSystem.add(saturnGroup)
+
+  return solarSystem
+}
+
+// Creates a planet mesh at a given position with specified radius, color, and segment count
+function createPlanet(pos, radius, color) {
+  const material = new THREE.MeshBasicMaterial({ color })
+  const geometry = new THREE.SphereGeometry(radius, 32, 32)
+  const planet = new THREE.Mesh(geometry, material)
+  planet.position.set(pos.x, pos.y, pos.z)
+  return planet
+}
+
 
 // Setup realistic lighting with star light effect
 function setupLighting() {
@@ -77,6 +193,7 @@ function setupLighting() {
     0.5 // threshold
   )
   composer.addPass(bloomPass)
+
 
   // Add ambient light
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.2)
@@ -134,9 +251,8 @@ function createStarField() {
 }
 
 function animate() {
-  requestAnimationFrame(animate)
-
-  // After the solar system is loaded, rotate each planet around the sun
+  requestAnimationFrame(animate);
+  
   if (startAnimation) {
     orbitGroups.forEach((orbitGroup) => {
       if (orbitGroup.userData.orbitSpeed) {
@@ -145,6 +261,74 @@ function animate() {
     })
   }
 
+  // Calculate the direction towards the target
+  var direction = new THREE.Vector3().subVectors(targetPosition, spaceship.position)
+  direction.normalize()
+  var distance = spaceship.position.distanceTo(targetPosition)
+
+  // Start animation TODO: add collision detection to avoid planets in our path
+  if(gui.controls.Animation == "On"){
+    if (traveling) {
+
+      if (distance > 0.4){
+
+        // Move spaceship towards the target
+        spaceship.position.add(direction.multiplyScalar(moveSpeed))
+
+        // Look at the target planet TODO: Use lookat instead if we ever implement reference to front of spaceship
+        if(gui.controls.TargetOrientation == "Right"){
+          spaceship.rotation.set(0, degToRad(-90), 0)
+        }
+        else{
+            spaceship.rotation.set(0, degToRad(90), 0)
+        }
+      
+        //spaceship.lookAt(targetPosition);
+        // Update camera position to follow spaceship
+        camera.position.set(spaceship.position.x, spaceship.position.y, 1)
+        orbitControls.target.set(spaceship.position.x, spaceship.position.y, spaceship.position.z)
+      }   
+
+
+      // Start rotating by 180 only if the spaceship is a certain distance away from the target
+      else if (distance <= 0.4 && currentRotation <= Math.PI) {
+        spaceship.rotation.y += rotationSpeed
+        currentRotation += rotationSpeed
+      }
+
+      // Start landing 
+      else if(currentRotation >= Math.PI){
+        traveling = false
+      } 
+    
+    } 
+
+    else if(!traveling){
+
+      if(distance > 0.1){
+
+        // Finalize the landing
+        spaceship.position.add(direction.multiplyScalar(moveSpeed))
+
+        // Update camera position and lookAt to follow spaceship
+        camera.position.set(spaceship.position.x, spaceship.position.y, 1)
+        orbitControls.target.set(spaceship.position.x, spaceship.position.y, spaceship.position.z)
+      }
+      // Landing over / Reset animation button and save starting planet
+      else{
+        gui.controls.Animation = "Off"
+        gui.controls.PastTarget = gui.controls.Target
+      }
+    }
+ 
+  }
+  // Reset variables 
+  else{
+    traveling = true
+    currentRotation = 0
+  }
+
+  orbitControls.update()
   composer.render()
 }
 
@@ -152,7 +336,10 @@ function animate() {
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight
   camera.updateProjectionMatrix()
+  
   renderer.setSize(window.innerWidth, window.innerHeight)
+  composer.setSize(window.innerWidth, window.innerHeight)
 }
+
 
 window.onload = main
