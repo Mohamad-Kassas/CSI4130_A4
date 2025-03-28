@@ -1,9 +1,15 @@
 import * as THREE from 'three';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { createExhaustEmitters } from "./exhaustParticles.js";
 
-// To access the spaceship, just add "import { spaceship } from "./spaceship.js";" and then add the spaceship group to the scene
+// To access the spaceship, just add "import { spaceship } from './spaceship.js';" and then add the spaceship group to the scene
 export const spaceship = new THREE.Group();
+
+// Creating exhaust emitters for the four engines
+const exhaustEmitters = createExhaustEmitters();
+exhaustEmitters.forEach(emitter => spaceship.add(emitter));
+spaceship.userData.exhaustEmitters = exhaustEmitters;
 
 const mtlLoader = new MTLLoader();
 
