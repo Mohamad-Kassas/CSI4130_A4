@@ -1,4 +1,4 @@
-import * as THREE from "three"
+﻿import * as THREE from "three"
 import { GUI } from "dat.gui"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
@@ -8,9 +8,27 @@ import { degToRad } from "three/src/math/MathUtils.js"
 import { spaceship } from "./spaceship.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
 
-let scene, camera, renderer, composer, gui, orbitGroups, startAnimation, orbitControls
+let scene,
+  camera,
+  renderer,
+  composer,
+  gui,
+  orbitGroups,
+  startAnimation,
+  orbitControls
 
 const clock = new THREE.Clock()
+
+const planetMap = {
+  Mercury: { index: 1, offsetY: 1.3 },
+  Venus: { index: 2, offsetY: 1.8 },
+  Earth: { index: 3, offsetY: 2.1 },
+  Mars: { index: 4, offsetY: 1.6 },
+  Jupiter: { index: 5, offsetY: 3.4 },
+  Saturn: { index: 6, offsetY: 1.5 },
+  Uranus: { index: 7, offsetY: 1.4 },
+  Neptune: { index: 8, offsetY: 2.4 },
+}
 
 // Default target planet
 let targetPosition
@@ -34,10 +52,14 @@ function main() {
   container.appendChild(renderer.domElement)
 
   scene = new THREE.Scene()
+  camera = initCamera()
+  gui = initControls()
 
-  CreateSpaceship()
-
+  composer = initComposer()
   orbitGroups = []
+
+  setupLighting()
+  createSpaceship()
 
   loadSolarSystem((orbitGroup) => {
     // Receive each loaded planet and add it to the scene
@@ -45,14 +67,8 @@ function main() {
     orbitGroups.push(orbitGroup)
   }).then((solarSystem) => {
     startAnimation = true
-    gui.controls.UpdateTarget()
+    gui.controls.updateTarget()
   })
-
-  camera = initCamera()
-  gui = initControls()
-  composer = initComposer()
-
-  setupLighting()
 
   scene.add(createStarField())
   animate()
@@ -67,95 +83,53 @@ function initCamera() {
     0.1,
     1000
   )
-  camera.position.set(spaceship.position.x, spaceship.position.y + 1, spaceship.position.z)
+  camera.position.set(
+    spaceship.position.x,
+    spaceship.position.y + 1,
+    spaceship.position.z
+  )
   return camera
 }
 
 // Initialize the controls
 function initControls() {
   orbitControls = new OrbitControls(camera, renderer.domElement)
-  orbitControls.target.set(spaceship.position.x, spaceship.position.y, spaceship.position.z)
+  orbitControls.target.set(
+    spaceship.position.x,
+    spaceship.position.y,
+    spaceship.position.z
+  )
+
+  const controls = {
+    speed: 0.05,
+    animation: false,
+    target: "Mars",
+    pastTarget: "Earth",
+    targetWorldPosition: new THREE.Vector3(),
+
+    updateTarget() {
+      const target = planetMap[gui.controls.target]
+      if (target) updateTargetPosition(target.index, target.offsetY)
+    },
+
+    updateIdleAnimation() {
+      const past = planetMap[gui.controls.pastTarget]
+      if (past) idle = getIdleSpeed(past.index)
+    },
+
+    toggleAnimation() {
+      this.animation = !this.animation
+    },
+  }
 
   const gui = new GUI()
-  gui.controls = new function () {
-    this.speed = 0.05
-    this.Animation = "Off"
-    this.Target = "Mars"
-    this.PastTarget = "Earth"
-    this.targetWorldPosition = new THREE.Vector3()
+  gui.add(controls, "toggleAnimation").name("Start animation")
+  gui
+    .add(controls, "target", Object.keys(planetMap))
+    .onChange(controls.updateTarget)
+  gui.add(controls, "speed", 0.01, 1).name("Speed").step(0.01)
 
-    this.UpdateTarget = function () {
-      switch (gui.controls.Target) {
-        case "Neptune":
-          orbitGroups[8].children[0].getWorldPosition(this.targetWorldPosition)
-          targetPosition = new THREE.Vector3(this.targetWorldPosition.x, this.targetWorldPosition.y + 2.4, this.targetWorldPosition.z)
-          break
-        case "Uranus":
-          orbitGroups[7].children[0].getWorldPosition(this.targetWorldPosition)
-          targetPosition = new THREE.Vector3(this.targetWorldPosition.x, this.targetWorldPosition.y + 1.4, this.targetWorldPosition.z)
-          break
-        case "Saturn":
-          orbitGroups[6].children[0].getWorldPosition(this.targetWorldPosition)
-          targetPosition = new THREE.Vector3(this.targetWorldPosition.x, this.targetWorldPosition.y + 1.5, this.targetWorldPosition.z)
-          break
-        case "Jupiter":
-          orbitGroups[5].children[0].getWorldPosition(this.targetWorldPosition)
-          targetPosition = new THREE.Vector3(this.targetWorldPosition.x, this.targetWorldPosition.y + 3.4, this.targetWorldPosition.z)
-          break
-        case "Mars":
-          orbitGroups[4].children[0].getWorldPosition(this.targetWorldPosition)
-          targetPosition = new THREE.Vector3(this.targetWorldPosition.x, this.targetWorldPosition.y + 1.6, this.targetWorldPosition.z)
-          break
-        case "Earth":
-          orbitGroups[3].children[0].getWorldPosition(this.targetWorldPosition)
-          targetPosition = new THREE.Vector3(this.targetWorldPosition.x, this.targetWorldPosition.y + 2.1, this.targetWorldPosition.z)
-          break
-        case "Venus":
-          orbitGroups[2].children[0].getWorldPosition(this.targetWorldPosition)
-          targetPosition = new THREE.Vector3(this.targetWorldPosition.x, this.targetWorldPosition.y + 1.8, this.targetWorldPosition.z)
-          break
-        case "Mercury":
-          orbitGroups[1].children[0].getWorldPosition(this.targetWorldPosition)
-          targetPosition = new THREE.Vector3(this.targetWorldPosition.x, this.targetWorldPosition.y + 1.3, this.targetWorldPosition.z)
-          break
-      }
-    }
-
-    this.UpdateIdleAnimation = function () {
-      switch (gui.controls.PastTarget) {
-        case "Neptune":
-          idle = orbitGroups[8].userData.orbitSpeed * gui.controls.speed
-          break
-        case "Uranus":
-          idle = orbitGroups[7].userData.orbitSpeed * gui.controls.speed
-          break
-        case "Saturn":
-          idle = orbitGroups[6].userData.orbitSpeed * gui.controls.speed
-          break
-        case "Jupiter":
-          idle = orbitGroups[5].userData.orbitSpeed * gui.controls.speed
-          break
-        case "Mars":
-          idle = orbitGroups[4].userData.orbitSpeed * gui.controls.speed
-          break  
-        case "Earth":
-          idle = orbitGroups[3].userData.orbitSpeed * gui.controls.speed
-          break
-        case "Venus":
-          idle = orbitGroups[2].userData.orbitSpeed * gui.controls.speed
-          break
-        case "Mercury":
-          idle = orbitGroups[1].userData.orbitSpeed * gui.controls.speed
-          break
-      }
-    }
-
-    this.ToggleAnimation = function () {
-      this.Animation = (this.Animation === "Off") ? "On" : "Off"
-    }
-  }
-  gui.add(gui.controls, "ToggleAnimation").name("Start Animation")
-  gui.add(gui.controls, "Target", ["Neptune", "Uranus", "Saturn", "Jupiter", "Mars", "Earth", "Venus", "Mercury"]).onChange(() => gui.controls.UpdateTarget())
+  gui.controls = controls
 
   return gui
 }
@@ -167,12 +141,11 @@ function initComposer() {
   return composer
 }
 
-function CreateSpaceship() {
+function createSpaceship() {
   rotationPivotSpaceship = new THREE.Group()
   rotationPivotSpaceship.position.set(0, 0, 0)
 
   spaceship.position.set(22, 2.1, 0)
-  spaceship.rotation.x = degToRad(90)
 
   rotationPivotSpaceship.add(spaceship)
   scene.add(rotationPivotSpaceship)
@@ -187,7 +160,7 @@ function setupLighting() {
     new THREE.Vector2(window.innerWidth, window.innerHeight),
     1.5, // strength
     0.4, // radius
-    0.5  // threshold
+    0.5 // threshold
   )
   composer.addPass(bloomPass)
 
@@ -214,7 +187,8 @@ function createStarField() {
     starVertices.push(THREE.MathUtils.randFloatSpread(1000)) // y
     starVertices.push(THREE.MathUtils.randFloatSpread(1000)) // z
 
-    const randomColor = colorChoices[Math.floor(Math.random() * colorChoices.length)]
+    const randomColor =
+      colorChoices[Math.floor(Math.random() * colorChoices.length)]
     const color = new THREE.Color(randomColor)
     starColors.push(color.r, color.g, color.b)
   }
@@ -243,6 +217,48 @@ function createStarField() {
   return starField
 }
 
+// Follow the spaceship with the camera
+function followSpaceship(offsetY = 1) {
+  spaceship.getWorldPosition(spaceshipworldPosition)
+
+  const desiredPosition = new THREE.Vector3(
+    spaceshipworldPosition.x,
+    spaceshipworldPosition.y + offsetY,
+    spaceshipworldPosition.z
+  )
+
+  camera.position.lerp(desiredPosition, 0.1) // smooth transition
+  orbitControls.target.lerp(spaceshipworldPosition, 0.1)
+}
+
+// Update the target position based on the selected planet and offset
+function updateTargetPosition(planetIndex, offsetY) {
+  orbitGroups[planetIndex].children[0].getWorldPosition(
+    gui.controls.targetWorldPosition
+  )
+  targetPosition = new THREE.Vector3(
+    gui.controls.targetWorldPosition.x,
+    gui.controls.targetWorldPosition.y + offsetY,
+    gui.controls.targetWorldPosition.z
+  )
+}
+
+// Orient the spaceship to face the target position
+function orientSpaceshipToTarget(from, to) {
+  const matrix = new THREE.Matrix4().lookAt(
+    from,
+    to,
+    new THREE.Vector3(0, 1, 0)
+  )
+  const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix)
+  spaceship.quaternion.slerp(quaternion, 0.05)
+}
+
+// Get the idle speed of the planet based on its index
+function getIdleSpeed(planetIndex) {
+  return orbitGroups[planetIndex].userData.orbitSpeed * gui.controls.speed
+}
+
 function animate() {
   requestAnimationFrame(animate)
 
@@ -250,22 +266,23 @@ function animate() {
 
   // Update engine exhaust depending on if spaceship is travelling or not
   if (spaceship.userData.exhaustEmitters) {
-    if (gui.controls.Animation === "On" && traveling) {
-      spaceship.userData.exhaustEmitters.forEach(emitter => {
-        emitter.visible = true;
-        emitter.userData.update(delta);
-      });
+    if (gui.controls.animation && traveling) {
+      spaceship.userData.exhaustEmitters.forEach((emitter) => {
+        emitter.visible = true
+        emitter.userData.update(delta)
+      })
     } else {
-      spaceship.userData.exhaustEmitters.forEach(emitter => {
-        emitter.visible = false;
-      });
+      spaceship.userData.exhaustEmitters.forEach((emitter) => {
+        emitter.visible = false
+      })
     }
   }
 
   if (startAnimation) {
     orbitGroups.forEach((orbitGroup) => {
       if (orbitGroup.userData.orbitSpeed) {
-        orbitGroup.rotation.y += orbitGroup.userData.orbitSpeed * gui.controls.speed
+        orbitGroup.rotation.y +=
+          orbitGroup.userData.orbitSpeed * gui.controls.speed
       }
     })
 
@@ -273,13 +290,15 @@ function animate() {
     spaceship.getWorldPosition(spaceshipworldPosition)
 
     // Calculate the normalized direction toward the target.
-    let direction = new THREE.Vector3().subVectors(targetPosition, spaceshipworldPosition).normalize()
+    let direction = new THREE.Vector3()
+      .subVectors(targetPosition, spaceshipworldPosition)
+      .normalize()
     let distance = spaceshipworldPosition.distanceTo(targetPosition)
 
-    if (gui.controls.Animation == "On") {
+    if (gui.controls.animation) {
       if (traveling) {
         if (distance > 0.1) {
-          gui.controls.UpdateTarget()
+          gui.controls.updateTarget()
 
           // Apply initial rotation only once
           if (!initialRotationApplied) {
@@ -287,37 +306,25 @@ function animate() {
             initialRotationApplied = true
           }
 
-          // Smoothly rotating the spaceship to face the target using quaternion
-          let targetQuaternion = new THREE.Quaternion()
-          let m = new THREE.Matrix4()
-          m.lookAt(spaceshipworldPosition, targetPosition, new THREE.Vector3(0, 1, 0))
-          targetQuaternion.setFromRotationMatrix(m)
-
-          let adjustment = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0)
-          targetQuaternion.multiply(adjustment)
-          spaceship.quaternion.slerp(targetQuaternion, 0.05)
+          // Orient the spaceship to face the target position
+          orientSpaceshipToTarget(spaceshipworldPosition, targetPosition)
 
           // Moving the spaceship toward the target
           spaceship.position.add(direction.multiplyScalar(moveSpeed))
 
-          // Updating camera to follow the spaceship
-          spaceship.getWorldPosition(spaceshipworldPosition)
-          camera.position.set(spaceshipworldPosition.x, spaceshipworldPosition.y + 1, spaceshipworldPosition.z)
-          orbitControls.target.set(spaceshipworldPosition.x, spaceshipworldPosition.y, spaceshipworldPosition.z)
+          followSpaceship()
         } else if (distance <= 0.1) {
           traveling = false
         }
       } else if (!traveling) {
-        spaceship.getWorldPosition(spaceshipworldPosition)
-        camera.position.set(spaceshipworldPosition.x, spaceshipworldPosition.y + 1, spaceshipworldPosition.z)
-        orbitControls.target.set(spaceshipworldPosition.x, spaceshipworldPosition.y, spaceshipworldPosition.z)
-      
-        gui.controls.Animation = "Off"
-        gui.controls.PastTarget = gui.controls.Target
+        followSpaceship()
+
+        gui.controls.animation = false
+        gui.controls.pastTarget = gui.controls.target
       }
     } else {
-      gui.controls.UpdateIdleAnimation()
-      gui.controls.UpdateTarget()
+      gui.controls.updateIdleAnimation()
+      gui.controls.updateTarget()
 
       //resetting flags
       traveling = true
@@ -326,10 +333,7 @@ function animate() {
       // Mimic the planet rotation around the sun
       rotationPivotSpaceship.rotation.y += idle
 
-      // Update camera position to follow spaceship
-      spaceship.getWorldPosition(spaceshipworldPosition)
-      camera.position.set(spaceshipworldPosition.x, spaceshipworldPosition.y + 1, spaceshipworldPosition.z)
-      orbitControls.target.set(spaceshipworldPosition.x, spaceshipworldPosition.y, spaceshipworldPosition.z)
+      followSpaceship()
     }
 
     orbitControls.update()
