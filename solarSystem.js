@@ -7,6 +7,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { degToRad } from "three/src/math/MathUtils.js"
 import { spaceship } from "./spaceship.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
+import { loadWallE } from "./wallE.js"
 
 let scene,
   camera,
@@ -65,6 +66,22 @@ function main() {
   }).then((solarSystem) => {
     startAnimation = true
     gui.controls.updateTarget()
+
+    // attach wall-e to earth for testing
+    const earthOrbitGroup = orbitGroups[planetMap.Earth.index]
+    const earthPlanetGroup = earthOrbitGroup.children[0]
+    const earthModel = earthPlanetGroup.children[0]
+
+    const box = new THREE.Box3().setFromObject(earthModel)
+    const size = new THREE.Vector3()
+    box.getSize(size)
+    const yOffset = size.y / 2
+
+    loadWallE(({ wallE, mixer }) => {
+      wallE.position.set(0, yOffset, 0)
+      earthPlanetGroup.add(wallE)
+      scene.userData.wallEMixer = mixer
+    })
   })
 
   scene.add(createStarField())
@@ -373,6 +390,11 @@ function animate() {
     if (gui.controls.cameraMode === "Follow Spaceship") {
       followSpaceship()
     }
+  }
+
+  // Update Wall‑E's animation
+  if (scene.userData.wallEMixer) {
+    scene.userData.wallEMixer.update(delta)
   }
 
   orbitControls.update()
