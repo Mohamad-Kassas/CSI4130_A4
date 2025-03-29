@@ -284,7 +284,7 @@ function followSpaceship(followDistance = 5, offsetY = 1, aimDistance = 10) {
 }
 
 // Follow Wall-E with the camera
-function followWallE(followDistance = 1, offsetY = 0.2, aimDistance = 10) {
+function followWallE(followDistance = 0.8, offsetY = 0.1, aimDistance = 10) {
   const wallE = scene.userData.wallE
   const wallEWorldPosition = new THREE.Vector3()
   wallE.getWorldPosition(wallEWorldPosition)
@@ -425,42 +425,47 @@ function updateSpaceshipMovement(delta) {
  * Update Wall-E movement
  * */
 function updateWallEMovement(delta) {
-
-  if (gui.controls.spaceshipAnimation) {
-    handleActiveSpaceshipMovement()
-  } else if (gui.controls.planetAnimation) {
-    handleIdleSpaceshipAnimation()
-  }
+  const wallE = scene.userData.wallE
+  if (!wallE) return
 
   if (gui.controls.cameraMode === "Follow Wall-E") {
-    followWallE()
+    followWallE();
   }
 
-  // Keyboard controls for Wall‑E movement
-  const wallESpeed = 0.5
-  if (scene.userData.wallE) {
-    const wallE = scene.userData.wallE
-    if (keysPressed["a"]) {
-      wallE.translateX(wallESpeed * delta)
-    }
-    if (keysPressed["d"]) {
-      wallE.translateX(-wallESpeed * delta)
-    }
-    if (keysPressed["w"]) {
-      wallE.translateZ(wallESpeed * delta)
-    }
-    if (keysPressed["s"]) {
-      wallE.translateZ(-wallESpeed * delta)
-    }
+  const earthRadius = scene.userData.earthRadius
+  
+  const moveSpeed = 0.5
+  const turnSpeed = Math.PI / 2
+  const pos = wallE.position.clone()
+  const normal = pos.clone().normalize()
 
-    const pos = wallE.position.clone()
-    pos.normalize().multiplyScalar(scene.userData.earthRadius)
-    wallE.position.copy(pos)
+  if (keysPressed["a"]) {
+    wallE.rotateOnWorldAxis(normal, turnSpeed * delta)
+  }
+  if (keysPressed["d"]) {
+    wallE.rotateOnWorldAxis(normal, -turnSpeed * delta)
   }
 
-  // Update Wall‑E's animation
-  if (scene.userData.wallEMixer) {
-    scene.userData.wallEMixer.update(delta)
+  let forward = new THREE.Vector3(0, 0, -1)
+    .applyQuaternion(wallE.quaternion)
+    .normalize()
+  forward.projectOnPlane(normal).normalize();
+
+  let moveInput = 0;
+  if (keysPressed["w"]) moveInput -= 1;
+  if (keysPressed["s"]) moveInput += 1;
+
+  if (moveInput !== 0) {
+    const arcLength = moveSpeed * delta;
+    const angle = arcLength / earthRadius;
+    const moveAngle = angle * moveInput;
+
+    const rotationAxis = new THREE.Vector3().crossVectors(pos, forward).normalize();
+    wallE.position.applyAxisAngle(rotationAxis, moveAngle);
+    const rotQuat = new THREE.Quaternion().setFromAxisAngle(rotationAxis, moveAngle);
+    wallE.quaternion.premultiply(rotQuat);
+    const newNormal = wallE.position.clone().normalize();
+    wallE.up.copy(newNormal);
   }
 }
 
