@@ -9,14 +9,13 @@ import { spaceship } from "./spaceship.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
 import { loadWallE } from "./wallE.js"
 
-let scene,
-  camera,
-  renderer,
-  composer,
-  gui,
-  orbitGroups,
-  startAnimation,
-  orbitControls
+let scene, camera, renderer, composer, gui, orbitControls
+let orbitGroups = []
+let startAnimation = false
+let targetPosition
+let rotationPivotSpaceship
+let idle
+let spaceshipWorldPosition = new THREE.Vector3()
 
 const clock = new THREE.Clock()
 
@@ -41,17 +40,9 @@ const planetMap = {
   Neptune: { index: 8, offsetY: 2.4 },
 }
 
-// Default target planet
-let targetPosition
-// Flags
-let traveling = true
-let initialRotationApplied = false
-// Rotation pivot for the spaceship
-let rotationPivotSpaceship
-let idle
-// World position of the spaceship
-let spaceshipworldPosition = new THREE.Vector3()
-
+/**
+ * Main entry point: initializes renderer, scene, camera, and loads assets
+ */
 function main() {
   renderer = new THREE.WebGLRenderer()
   renderer.setClearColor(new THREE.Color(0x000000))
@@ -64,7 +55,6 @@ function main() {
   camera = initCamera()
   gui = initControls()
   composer = initComposer()
-  orbitGroups = []
 
   setupLighting()
   createSpaceship()
@@ -73,7 +63,7 @@ function main() {
     // Receive each loaded planet and add it to the scene
     scene.add(orbitGroup)
     orbitGroups.push(orbitGroup)
-  }).then((solarSystem) => {
+  }).then(() => {
     startAnimation = true
     gui.controls.updateTarget()
 
@@ -101,7 +91,9 @@ function main() {
   window.addEventListener("resize", onResize, true)
 }
 
-// Initialize the camera
+/**
+ * Initializes the  camera
+ */
 function initCamera() {
   camera = new THREE.PerspectiveCamera(
     45,
@@ -113,14 +105,12 @@ function initCamera() {
   return camera
 }
 
-// Initialize the controls
+/**
+ * Initializes orbit controls and GUI
+ */
 function initControls() {
   orbitControls = new OrbitControls(camera, renderer.domElement)
-  orbitControls.target.set(
-    spaceship.position.x,
-    spaceship.position.y,
-    spaceship.position.z
-  )
+  orbitControls.target.copy(spaceship.position)
 
   const controls = {
     planetSpeed: 0.05,
@@ -137,13 +127,17 @@ function initControls() {
     },
 
     updateTarget() {
-      const target = planetMap[gui.controls.target]
-      if (target) updateTargetPosition(target.index, target.offsetY)
+      const targetData = planetMap[gui.controls.target]
+      if (targetData) {
+        updateTargetPosition(targetData.index, targetData.offsetY)
+      }
     },
 
     updateIdleAnimation() {
-      const past = planetMap[gui.controls.pastTarget]
-      if (past) idle = getIdleSpeed(past.index)
+      const pastData = planetMap[gui.controls.pastTarget]
+      if (pastData) {
+        idle = getIdleSpeed(pastData.index)
+      }
     },
 
     startSpaceshipAnimation() {
@@ -153,6 +147,7 @@ function initControls() {
     },
   }
 
+  // Setup dat.GUI
   const gui = new GUI()
   gui
     .add(controls, "planetAnimation")
@@ -172,32 +167,35 @@ function initControls() {
     .name("Camera Mode")
 
   gui.controls = controls
-
   return gui
 }
 
-// Initialize the composer
+/**
+ * Initializes the composer
+ */
 function initComposer() {
   composer = new EffectComposer(renderer)
   composer.addPass(new RenderPass(scene, camera))
   return composer
 }
 
+/**
+ * Creates the spaceship and adds it to a rotation pivot
+ */
 function createSpaceship() {
   rotationPivotSpaceship = new THREE.Group()
   rotationPivotSpaceship.position.set(0, 0, 0)
 
   spaceship.position.set(22, 2.1, 0)
-
   rotationPivotSpaceship.add(spaceship)
   scene.add(rotationPivotSpaceship)
-
   spaceship.scale.set(0.05, 0.05, 0.05)
 }
 
-// Setup realistic lighting with star light effect
+/**
+ * Sets up scene lighting including ambient, point, and bloom effect
+ */
 function setupLighting() {
-  // Add bloom (star light) effect
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
     1.5, // strength
@@ -206,16 +204,18 @@ function setupLighting() {
   )
   composer.addPass(bloomPass)
 
-  // Add ambient light
+  // Ambient light
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.2)
   scene.add(ambientLight)
 
-  // Add point light from the sun
+  // Point light simulating the sun
   const pointLight = new THREE.PointLight(0xffffff, 100, 1000)
   scene.add(pointLight)
 }
 
-// Creates a star field with 3000 stars
+/**
+ * Creates a star field using procedural content creation
+ */
 function createStarField() {
   const starGeometry = new THREE.BufferGeometry()
   const starCount = 3000
@@ -223,7 +223,7 @@ function createStarField() {
   const starColors = []
   const colorChoices = [0xffffff, 0xffccaa, 0xaaccff]
 
-  // Create vertices and colors for each star, spread over a 1000 unit cube
+  // Generate random positions and colors for stars
   for (let i = 0; i < starCount; i++) {
     starVertices.push(THREE.MathUtils.randFloatSpread(1000)) // x
     starVertices.push(THREE.MathUtils.randFloatSpread(1000)) // y
@@ -235,7 +235,7 @@ function createStarField() {
     starColors.push(color.r, color.g, color.b)
   }
 
-  // Add position and color attributes to geometry
+  // Set geometry attributes
   starGeometry.setAttribute(
     "position",
     new THREE.Float32BufferAttribute(starVertices, 3)
@@ -259,20 +259,22 @@ function createStarField() {
   return starField
 }
 
-// Follow the spaceship with the camera
+/**
+ * Makes the camera follow the spaceship
+ */
 function followSpaceship(followDistance = 5, offsetY = 1, aimDistance = 10) {
-  spaceship.getWorldPosition(spaceshipworldPosition)
+  spaceship.getWorldPosition(spaceshipWorldPosition)
   const backward = new THREE.Vector3()
   spaceship.getWorldDirection(backward)
 
-  // Positioning the camera behind the spaceship
-  const desiredCameraPosition = spaceshipworldPosition
+  // Position the camera behind the spaceship
+  const desiredCameraPosition = spaceshipWorldPosition
     .clone()
     .add(backward.clone().multiplyScalar(followDistance))
   desiredCameraPosition.y += offsetY
 
-  // Making camera look in front of the spaceship
-  const target = spaceshipworldPosition
+  // Set the camera target ahead of the spaceship
+  const target = spaceshipWorldPosition
     .clone()
     .sub(backward.clone().multiplyScalar(aimDistance))
 
@@ -304,9 +306,13 @@ function followWallE(followDistance = 1, offsetY = 0.2, aimDistance = 10) {
   // Smooth transition
   camera.position.lerp(desiredCameraPosition, 0.1)
   orbitControls.target.lerp(target, 0.1)
+  camera.position.lerp(desiredCameraPosition, 0.1)
+  orbitControls.target.lerp(target, 0.1)
 }
 
-// Update the target position based on the selected planet and offset
+/**
+ * Updates the target position based on the selected planet
+ */
 function updateTargetPosition(planetIndex, offsetY) {
   orbitGroups[planetIndex].children[0].getWorldPosition(
     gui.controls.targetWorldPosition
@@ -318,8 +324,11 @@ function updateTargetPosition(planetIndex, offsetY) {
   )
 }
 
-// Orient the spaceship to face the target position
+/**
+ * Orients the spaceship to face the target
+ */
 function orientSpaceshipToTarget(from, to) {
+  // Create a rotation matrix pointing from current to target position
   const matrix = new THREE.Matrix4().lookAt(
     from,
     to,
@@ -327,126 +336,104 @@ function orientSpaceshipToTarget(from, to) {
   )
   const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix)
 
-  let adjustment = new THREE.Quaternion().setFromAxisAngle(
+  const adjustment = new THREE.Quaternion().setFromAxisAngle(
     new THREE.Vector3(0, 1, 0),
     0
   )
   quaternion.multiply(adjustment)
 
+  // Smoothly rotate the spaceship toward the target orientation
   spaceship.quaternion.slerp(quaternion, 0.05)
 }
 
-// Get the idle speed of the planet based on its index
+/**
+ * Computes the idle rotation speed based on the planet's orbit speed
+ */
 function getIdleSpeed(planetIndex) {
   return orbitGroups[planetIndex].userData.orbitSpeed * gui.controls.planetSpeed
 }
 
+/**
+ * Main animation loop
+ */
 function animate() {
   requestAnimationFrame(animate)
-
   if (!startAnimation) return
 
   const delta = clock.getDelta()
 
-  // Update engine exhaust depending on if spaceship is travelling or not
-  if (spaceship.userData.exhaustEmitters) {
-    if (gui.controls.spaceshipAnimation && traveling) {
-      spaceship.userData.exhaustEmitters.forEach((emitter) => {
-        emitter.visible = true
-        emitter.userData.update(delta)
-      })
-    } else {
-      spaceship.userData.exhaustEmitters.forEach((emitter) => {
-        emitter.visible = false
-      })
+  updateExhaust(delta)
+  updatePlanets(delta)
+  updateSpaceshipMovement(delta)
+  updateWallEMovement(delta)
+  orbitControls.update()
+  composer.render()
+}
+
+/**
+ * Update engine exhaust effects for the spaceship
+ */
+function updateExhaust(delta) {
+  if (!spaceship.userData.exhaustEmitters) return
+
+  if (gui.controls.spaceshipAnimation) {
+    spaceship.userData.exhaustEmitters.forEach((emitter) => {
+      emitter.visible = true
+      emitter.userData.update(delta)
+    })
+  } else {
+    spaceship.userData.exhaustEmitters.forEach((emitter) => {
+      emitter.visible = false
+    })
+  }
+}
+
+/**
+ * Update planet rotations based on the current animation mode
+ */
+function updatePlanets(delta) {
+  if (!gui.controls.planetAnimation) return
+
+  // Update rotation for each orbit group
+  orbitGroups.forEach((orbitGroup) => {
+    if (orbitGroup.userData.orbitSpeed) {
+      orbitGroup.rotation.y +=
+        orbitGroup.userData.orbitSpeed * gui.controls.planetSpeed
     }
+  })
+}
+
+/**
+ * Update spaceship movement based on the current animation mode
+ * */
+function updateSpaceshipMovement(delta) {
+  // Always update the target in case it has changed
+  gui.controls.updateTarget()
+
+  if (gui.controls.spaceshipAnimation) {
+    handleActiveSpaceshipMovement()
+  } else if (gui.controls.planetAnimation) {
+    handleIdleSpaceshipAnimation()
   }
 
-  if (gui.controls.planetAnimation) {
-    orbitGroups.forEach((orbitGroup) => {
-      if (orbitGroup.userData.orbitSpeed) {
-        orbitGroup.rotation.y +=
-          orbitGroup.userData.orbitSpeed * gui.controls.planetSpeed
-      }
-    })
+  if (gui.controls.cameraMode === "Follow Spaceship") {
+    followSpaceship()
+  }
+}
+
+/**
+ * Update Wall-E movement
+ * */
+function updateWallEMovement(delta) {
+
+  if (gui.controls.spaceshipAnimation) {
+    handleActiveSpaceshipMovement()
+  } else if (gui.controls.planetAnimation) {
+    handleIdleSpaceshipAnimation()
   }
 
   if (gui.controls.cameraMode === "Follow Wall-E") {
     followWallE()
-  }
-
-  if (gui.controls.spaceshipAnimation) {
-    // Update spaceship world position.
-    spaceship.getWorldPosition(spaceshipworldPosition)
-
-    // Calculate the normalized direction toward the target.
-    let direction = new THREE.Vector3()
-      .subVectors(targetPosition, spaceshipworldPosition)
-      .normalize()
-    let distance = spaceshipworldPosition.distanceTo(targetPosition)
-
-    if (traveling) {
-      if (gui.controls.cameraMode === "Follow Wall-E") {
-        gui.controls.cameraMode = "Follow Spaceship"
-
-        const camModeController = gui.__controllers.find(
-          (c) => c.property === "cameraMode"
-        )
-        if (camModeController) {
-          gui.remove(camModeController)
-        }
-
-        gui.add(gui.controls, "cameraMode", [
-          "Follow Spaceship",
-          "Free Roam",
-        ]).name("Camera Mode")
-      }
-
-      if (distance > 0.1) {
-        gui.controls.updateTarget()
-
-        // Apply initial rotation only once
-        if (!initialRotationApplied) {
-          spaceship.rotation.x = degToRad(0)
-          initialRotationApplied = true
-        }
-
-        // Orient the spaceship to face the target position
-        orientSpaceshipToTarget(spaceshipworldPosition, targetPosition)
-
-        // Moving the spaceship toward the target
-        spaceship.position.add(
-          direction.multiplyScalar(gui.controls.spaceshipSpeed)
-        )
-
-        // Only follow the spaceship if in "Follow Spaceship" mode
-        if (gui.controls.cameraMode === "Follow Spaceship") {
-          followSpaceship()
-        }
-      } else if (distance <= 0.1) {
-        traveling = false
-      }
-    } else if (!traveling) {
-      if (gui.controls.cameraMode === "Follow Spaceship") {
-        followSpaceship()
-      }
-      gui.controls.spaceshipAnimation = false
-      gui.controls.pastTarget = gui.controls.target
-    }
-  } else if (gui.controls.planetAnimation) {
-    gui.controls.updateIdleAnimation()
-    gui.controls.updateTarget()
-
-    // Resetting flags
-    traveling = true
-    initialRotationApplied = false
-
-    // Mimic the planet rotation around the sun
-    rotationPivotSpaceship.rotation.y += idle
-
-    if (gui.controls.cameraMode === "Follow Spaceship") {
-      followSpaceship()
-    }
   }
 
   // Keyboard controls for Wall‑E movement
@@ -475,16 +462,63 @@ function animate() {
   if (scene.userData.wallEMixer) {
     scene.userData.wallEMixer.update(delta)
   }
-
-  orbitControls.update()
-  composer.render()
 }
 
-// Updates camera and renderer on window resize
+/**
+ * Handles the movement of the spaceship toward its target
+ */
+function handleActiveSpaceshipMovement() {
+
+  // Once the spaceship starts travelling, update camera mode option to "Follow Spaceship"
+  if (gui.controls.cameraMode === "Follow Wall-E") {
+    gui.controls.cameraMode = "Follow Spaceship"
+
+    const camModeController = gui.__controllers.find(
+      (c) => c.property === "cameraMode"
+    )
+    if (camModeController) {
+      gui.remove(camModeController)
+    }
+
+    gui.add(gui.controls, "cameraMode", [
+      "Follow Spaceship",
+      "Free Roam",
+    ]).name("Camera Mode")
+  }
+
+  spaceship.getWorldPosition(spaceshipWorldPosition)
+  const direction = new THREE.Vector3()
+    .subVectors(targetPosition, spaceshipWorldPosition)
+    .normalize()
+  const distance = spaceshipWorldPosition.distanceTo(targetPosition)
+
+  // If spaceship has reached the target, stop the animation
+  if (distance <= 0.1) {
+    gui.controls.spaceshipAnimation = false
+    gui.controls.pastTarget = gui.controls.target
+    return
+  }
+
+  orientSpaceshipToTarget(spaceshipWorldPosition, targetPosition)
+  spaceship.position.add(direction.multiplyScalar(gui.controls.spaceshipSpeed))
+}
+
+/**
+ * Handles the idle animation when the spaceship animation is off
+ */
+function handleIdleSpaceshipAnimation() {
+  // Update the rotation pivot for idle animation
+  rotationPivotSpaceship.rotation.y += getIdleSpeed(
+    planetMap[gui.controls.pastTarget].index
+  )
+}
+
+/**
+ * Adjusts camera and renderer sizes on window resize
+ */
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight
   camera.updateProjectionMatrix()
-
   renderer.setSize(window.innerWidth, window.innerHeight)
   composer.setSize(window.innerWidth, window.innerHeight)
 }
