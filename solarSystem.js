@@ -96,11 +96,16 @@ function initControls() {
   const controls = {
     planetSpeed: 0.05,
     spaceshipSpeed: 0.05,
-    animation: false,
+    spaceshipAnimation: false,
+    planetAnimation: true,
     target: "Mars",
     pastTarget: "Earth",
     targetWorldPosition: new THREE.Vector3(),
     cameraMode: "Free Roam",
+
+    togglePlanetAnimation() {
+      this.planetAnimation = !this.planetAnimation
+    },
 
     updateTarget() {
       const target = planetMap[gui.controls.target]
@@ -112,13 +117,19 @@ function initControls() {
       if (past) idle = getIdleSpeed(past.index)
     },
 
-    toggleAnimation() {
-      this.animation = !this.animation
+    startSpaceshipAnimation() {
+      if (!this.spaceshipAnimation) {
+        this.spaceshipAnimation = true
+      }
     },
   }
 
   const gui = new GUI()
-  gui.add(controls, "toggleAnimation").name("Start animation")
+  gui
+    .add(controls, "planetAnimation")
+    .name("Planet Animation")
+    .onChange(controls.togglePlanetAnimation)
+  gui.add(controls, "startSpaceshipAnimation").name("Launch Spaceship")
   gui
     .add(controls, "target", Object.keys(planetMap))
     .onChange(controls.updateTarget)
@@ -279,11 +290,13 @@ function getIdleSpeed(planetIndex) {
 function animate() {
   requestAnimationFrame(animate)
 
+  if (!startAnimation) return
+
   const delta = clock.getDelta()
 
   // Update engine exhaust depending on if spaceship is travelling or not
   if (spaceship.userData.exhaustEmitters) {
-    if (gui.controls.animation && traveling) {
+    if (gui.controls.spaceshipAnimation && traveling) {
       spaceship.userData.exhaustEmitters.forEach((emitter) => {
         emitter.visible = true
         emitter.userData.update(delta)
@@ -295,14 +308,16 @@ function animate() {
     }
   }
 
-  if (startAnimation) {
+  if (gui.controls.planetAnimation) {
     orbitGroups.forEach((orbitGroup) => {
       if (orbitGroup.userData.orbitSpeed) {
         orbitGroup.rotation.y +=
           orbitGroup.userData.orbitSpeed * gui.controls.planetSpeed
       }
     })
+  }
 
+  if (gui.controls.spaceshipAnimation) {
     // Update spaceship world position.
     spaceship.getWorldPosition(spaceshipworldPosition)
 
@@ -312,58 +327,56 @@ function animate() {
       .normalize()
     let distance = spaceshipworldPosition.distanceTo(targetPosition)
 
-    if (gui.controls.animation) {
-      if (traveling) {
-        if (distance > 0.1) {
-          gui.controls.updateTarget()
+    if (traveling) {
+      if (distance > 0.1) {
+        gui.controls.updateTarget()
 
-          // Apply initial rotation only once
-          if (!initialRotationApplied) {
-            spaceship.rotation.x = degToRad(0)
-            initialRotationApplied = true
-          }
-
-          // Orient the spaceship to face the target position
-          orientSpaceshipToTarget(spaceshipworldPosition, targetPosition)
-
-          // Moving the spaceship toward the target
-          spaceship.position.add(
-            direction.multiplyScalar(gui.controls.spaceshipSpeed)
-          )
-
-          // Only follow the spaceship if in "Follow Spaceship" mode
-          if (gui.controls.cameraMode === "Follow Spaceship") {
-            followSpaceship()
-          }
-        } else if (distance <= 0.1) {
-          traveling = false
+        // Apply initial rotation only once
+        if (!initialRotationApplied) {
+          spaceship.rotation.x = degToRad(0)
+          initialRotationApplied = true
         }
-      } else if (!traveling) {
+
+        // Orient the spaceship to face the target position
+        orientSpaceshipToTarget(spaceshipworldPosition, targetPosition)
+
+        // Moving the spaceship toward the target
+        spaceship.position.add(
+          direction.multiplyScalar(gui.controls.spaceshipSpeed)
+        )
+
+        // Only follow the spaceship if in "Follow Spaceship" mode
         if (gui.controls.cameraMode === "Follow Spaceship") {
           followSpaceship()
         }
-        gui.controls.animation = false
-        gui.controls.pastTarget = gui.controls.target
+      } else if (distance <= 0.1) {
+        traveling = false
       }
-    } else {
-      gui.controls.updateIdleAnimation()
-      gui.controls.updateTarget()
-
-      // Resetting flags
-      traveling = true
-      initialRotationApplied = false
-
-      // Mimic the planet rotation around the sun
-      rotationPivotSpaceship.rotation.y += idle
-
+    } else if (!traveling) {
       if (gui.controls.cameraMode === "Follow Spaceship") {
         followSpaceship()
       }
+      gui.controls.spaceshipAnimation = false
+      gui.controls.pastTarget = gui.controls.target
     }
+  } else if (gui.controls.planetAnimation) {
+    gui.controls.updateIdleAnimation()
+    gui.controls.updateTarget()
 
-    orbitControls.update()
-    composer.render()
+    // Resetting flags
+    traveling = true
+    initialRotationApplied = false
+
+    // Mimic the planet rotation around the sun
+    rotationPivotSpaceship.rotation.y += idle
+
+    if (gui.controls.cameraMode === "Follow Spaceship") {
+      followSpaceship()
+    }
   }
+
+  orbitControls.update()
+  composer.render()
 }
 
 // Updates camera and renderer on window resize
