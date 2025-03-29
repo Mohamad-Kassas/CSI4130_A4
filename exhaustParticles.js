@@ -22,7 +22,7 @@ function createCircleTexture() {
   return texture;
 }
 
-export function createExhaustEmitter(emitterOffset, particleCount = 200) {
+export function createExhaustEmitter(emitterOffset, particleCount = 150) {
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(particleCount * 3);
 
@@ -37,7 +37,8 @@ export function createExhaustEmitter(emitterOffset, particleCount = 200) {
 
   const material = new THREE.PointsMaterial({
     color: 0xff6600,
-    size: 0.05,
+    size: 10,
+    sizeAttenuation: false,
     transparent: true,
     opacity: 0.8,
     depthWrite: false,
@@ -98,8 +99,8 @@ export function createExhaustEmitter(emitterOffset, particleCount = 200) {
         worldPositions[idx + 2]
       );
 
-      if (particleWorldPos.distanceTo(emitterWorldPos) > 1) {
-        let r = Math.random() * 1;
+      if (particleWorldPos.distanceTo(emitterWorldPos) > 0.5) {
+        let r = Math.random() * 0.5;
         let offset = engineDirWorld.clone().multiplyScalar(-r);
         worldPositions[idx]     = emitterWorldPos.x + offset.x;
         worldPositions[idx + 1] = emitterWorldPos.y + offset.y;
