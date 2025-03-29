@@ -231,30 +231,25 @@ function createStarField() {
 }
 
 // Follow the spaceship with the camera
-function followSpaceship(offsetY = 1) {
-  // Get the spaceship's world position
-  spaceship.getWorldPosition(spaceshipworldPosition)
+function followSpaceship(followDistance = 5, offsetY = 1, aimDistance = 10) {
+  spaceship.getWorldPosition(spaceshipworldPosition);
+  const backward = new THREE.Vector3();
+  spaceship.getWorldDirection(backward);
 
-  // DO NOT REMOVE THIS CODE, WILL BE USEFUL LATER
-  // const desiredPosition = new THREE.Vector3(
-  //   spaceshipworldPosition.x,
-  //   spaceshipworldPosition.y + offsetY,
-  //   spaceshipworldPosition.z
-  // )
+  // Positioning the camera behind the spaceship
+  const desiredCameraPosition = spaceshipworldPosition
+    .clone()
+    .add(backward.clone().multiplyScalar(followDistance));
+  desiredCameraPosition.y += offsetY;
 
-  // camera.position.lerp(desiredPosition, 0.1) // smooth transition
-  // orbitControls.target.lerp(spaceshipworldPosition, 0.1)
+  // Making camera look in front of the spaceship
+  const target = spaceshipworldPosition
+    .clone()
+    .sub(backward.clone().multiplyScalar(aimDistance));
 
-  camera.position.set(
-    spaceshipworldPosition.x,
-    spaceshipworldPosition.y + offsetY,
-    spaceshipworldPosition.z
-  )
-  orbitControls.target.set(
-    spaceshipworldPosition.x,
-    spaceshipworldPosition.y,
-    spaceshipworldPosition.z
-  )
+  // Smooth transition
+  camera.position.lerp(desiredCameraPosition, 0.1);
+  orbitControls.target.lerp(target, 0.1);
 }
 
 // Update the target position based on the selected planet and offset
