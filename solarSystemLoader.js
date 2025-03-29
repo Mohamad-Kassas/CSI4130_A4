@@ -52,7 +52,7 @@ export async function loadSolarSystem(onPlanetLoaded) {
 function loadPlanetModel(planetName, desiredScale) {
   return new Promise((resolve) => {
     const loader = new GLTFLoader()
-    const url = `shader/${planetName}/scene.gltf`
+    const url = `models/${planetName}/scene.gltf`
     loader.load(
       url,
       (gltf) => {

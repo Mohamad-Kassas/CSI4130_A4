@@ -217,7 +217,7 @@ function createStarField() {
   )
 
   // Load disc texture for stars
-  const disc = new THREE.TextureLoader().load("shader/disc.png")
+  const disc = new THREE.TextureLoader().load("models/disc.png")
 
   const starMaterial = new THREE.PointsMaterial({
     size: 1,
