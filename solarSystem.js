@@ -32,8 +32,6 @@ const planetMap = {
 
 // Default target planet
 let targetPosition
-// Speed of translation
-let moveSpeed = 0.05
 // Flags
 let traveling = true
 let initialRotationApplied = false
@@ -54,7 +52,6 @@ function main() {
   scene = new THREE.Scene()
   camera = initCamera()
   gui = initControls()
-
   composer = initComposer()
   orbitGroups = []
 
@@ -97,7 +94,8 @@ function initControls() {
   )
 
   const controls = {
-    speed: 1,
+    planetSpeed: 0.05,
+    spaceshipSpeed: 0.05,
     animation: false,
     target: "Mars",
     pastTarget: "Earth",
@@ -124,7 +122,11 @@ function initControls() {
   gui
     .add(controls, "target", Object.keys(planetMap))
     .onChange(controls.updateTarget)
-  gui.add(controls, "speed", 0.01, 10).name("Speed").step(0.01)
+  gui.add(controls, "planetSpeed", 0.01, 10).name("Planet Speed").step(0.01)
+  gui
+    .add(controls, "spaceshipSpeed", 0.01, 1)
+    .name("Spaceship Speed")
+    .step(0.01)
   gui
     .add(controls, "cameraMode", ["Follow Spaceship", "Free Roam"])
     .name("Camera Mode")
@@ -219,6 +221,7 @@ function createStarField() {
 
 // Follow the spaceship with the camera
 function followSpaceship(offsetY = 1) {
+  // Get the spaceship's world position
   spaceship.getWorldPosition(spaceshipworldPosition)
 
   // DO NOT REMOVE THIS CODE, WILL BE USEFUL LATER
@@ -275,7 +278,7 @@ function orientSpaceshipToTarget(from, to) {
 
 // Get the idle speed of the planet based on its index
 function getIdleSpeed(planetIndex) {
-  return orbitGroups[planetIndex].userData.orbitSpeed * gui.controls.speed
+  return orbitGroups[planetIndex].userData.orbitSpeed * gui.controls.planetSpeed
 }
 
 function animate() {
@@ -301,7 +304,7 @@ function animate() {
     orbitGroups.forEach((orbitGroup) => {
       if (orbitGroup.userData.orbitSpeed) {
         orbitGroup.rotation.y +=
-          orbitGroup.userData.orbitSpeed * gui.controls.speed
+          orbitGroup.userData.orbitSpeed * gui.controls.planetSpeed
       }
     })
 
@@ -329,7 +332,9 @@ function animate() {
           orientSpaceshipToTarget(spaceshipworldPosition, targetPosition)
 
           // Moving the spaceship toward the target
-          spaceship.position.add(direction.multiplyScalar(moveSpeed))
+          spaceship.position.add(
+            direction.multiplyScalar(gui.controls.spaceshipSpeed)
+          )
 
           // Only follow the spaceship if in "Follow Spaceship" mode
           if (gui.controls.cameraMode === "Follow Spaceship") {
