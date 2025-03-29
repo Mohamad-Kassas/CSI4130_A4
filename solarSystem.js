@@ -83,11 +83,7 @@ function initCamera() {
     0.1,
     1000
   )
-  camera.position.set(
-    spaceship.position.x,
-    spaceship.position.y + 1,
-    spaceship.position.z
-  )
+  camera.position.set(0, 0, 200)
   return camera
 }
 
@@ -101,11 +97,12 @@ function initControls() {
   )
 
   const controls = {
-    speed: 0.05,
+    speed: 1,
     animation: false,
     target: "Mars",
     pastTarget: "Earth",
     targetWorldPosition: new THREE.Vector3(),
+    cameraMode: "Free Roam",
 
     updateTarget() {
       const target = planetMap[gui.controls.target]
@@ -127,7 +124,10 @@ function initControls() {
   gui
     .add(controls, "target", Object.keys(planetMap))
     .onChange(controls.updateTarget)
-  gui.add(controls, "speed", 0.01, 1).name("Speed").step(0.01)
+  gui.add(controls, "speed", 0.01, 10).name("Speed").step(0.01)
+  gui
+    .add(controls, "cameraMode", ["Follow Spaceship", "Free Roam"])
+    .name("Camera Mode")
 
   gui.controls = controls
 
@@ -221,14 +221,26 @@ function createStarField() {
 function followSpaceship(offsetY = 1) {
   spaceship.getWorldPosition(spaceshipworldPosition)
 
-  const desiredPosition = new THREE.Vector3(
+  // DO NOT REMOVE THIS CODE, WILL BE USEFUL LATER
+  // const desiredPosition = new THREE.Vector3(
+  //   spaceshipworldPosition.x,
+  //   spaceshipworldPosition.y + offsetY,
+  //   spaceshipworldPosition.z
+  // )
+
+  // camera.position.lerp(desiredPosition, 0.1) // smooth transition
+  // orbitControls.target.lerp(spaceshipworldPosition, 0.1)
+
+  camera.position.set(
     spaceshipworldPosition.x,
     spaceshipworldPosition.y + offsetY,
     spaceshipworldPosition.z
   )
-
-  camera.position.lerp(desiredPosition, 0.1) // smooth transition
-  orbitControls.target.lerp(spaceshipworldPosition, 0.1)
+  orbitControls.target.set(
+    spaceshipworldPosition.x,
+    spaceshipworldPosition.y,
+    spaceshipworldPosition.z
+  )
 }
 
 // Update the target position based on the selected planet and offset
@@ -251,6 +263,13 @@ function orientSpaceshipToTarget(from, to) {
     new THREE.Vector3(0, 1, 0)
   )
   const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix)
+
+  let adjustment = new THREE.Quaternion().setFromAxisAngle(
+    new THREE.Vector3(0, 1, 0),
+    0
+  )
+  quaternion.multiply(adjustment)
+
   spaceship.quaternion.slerp(quaternion, 0.05)
 }
 
@@ -312,13 +331,17 @@ function animate() {
           // Moving the spaceship toward the target
           spaceship.position.add(direction.multiplyScalar(moveSpeed))
 
-          followSpaceship()
+          // Only follow the spaceship if in "Follow Spaceship" mode
+          if (gui.controls.cameraMode === "Follow Spaceship") {
+            followSpaceship()
+          }
         } else if (distance <= 0.1) {
           traveling = false
         }
       } else if (!traveling) {
-        followSpaceship()
-
+        if (gui.controls.cameraMode === "Follow Spaceship") {
+          followSpaceship()
+        }
         gui.controls.animation = false
         gui.controls.pastTarget = gui.controls.target
       }
@@ -326,14 +349,16 @@ function animate() {
       gui.controls.updateIdleAnimation()
       gui.controls.updateTarget()
 
-      //resetting flags
+      // Resetting flags
       traveling = true
       initialRotationApplied = false
 
       // Mimic the planet rotation around the sun
       rotationPivotSpaceship.rotation.y += idle
 
-      followSpaceship()
+      if (gui.controls.cameraMode === "Follow Spaceship") {
+        followSpaceship()
+      }
     }
 
     orbitControls.update()
