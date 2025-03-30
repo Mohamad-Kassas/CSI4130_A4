@@ -7,6 +7,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { spaceship } from "./spaceship.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
 import { loadWallE } from "./wallE.js"
+import { loadEve } from "./eve.js"
 
 let scene, camera, renderer, composer, gui, orbitControls
 let orbitGroups = []
@@ -78,6 +79,8 @@ function main() {
     box.getSize(size)
     const yOffset = size.y / 2
     scene.userData.earthRadius = yOffset
+
+    createEve()
 
     loadWallE(({ wallE, mixer }) => {
       wallE.position.set(0, yOffset, 0)
@@ -290,6 +293,55 @@ function createStarField() {
   })
   const starField = new THREE.Points(starGeometry, starMaterial)
   return starField
+}
+
+/**
+ * Creates Eve object and places her on a random planet
+ */
+function createEve() {
+  // Select a random planet
+  const planetNames = Object.keys(planetMap).filter(
+    name => name !== "Earth" && name !== "Uranus"
+  );
+  const randomPlanetName =
+    planetNames[Math.floor(Math.random() * planetNames.length)];
+  const randomPlanetData = planetMap[randomPlanetName];
+  const randomOrbitGroup = orbitGroups[randomPlanetData.index];
+  const randomPlanetGroup = randomOrbitGroup.children[0];
+  const randomPlanetModel = randomPlanetGroup.children[0];
+
+  // Get the planet's bounding box and estimate its radius
+  const randomBox = new THREE.Box3().setFromObject(randomPlanetModel);
+  const randomSize = new THREE.Vector3();
+  randomBox.getSize(randomSize);
+  const planetRadius = randomSize.y / 2;
+
+  // Generate a random point on the sphere’s surface
+  const minPhi = Math.PI / 4;
+  const maxPhi = (3 * Math.PI) / 4;
+  const phi = Math.random() * (maxPhi - minPhi) + minPhi;
+  const theta = Math.random() * Math.PI * 2;
+
+  const randomPosition = new THREE.Vector3(
+    planetRadius * Math.sin(phi) * Math.cos(theta),
+    planetRadius * Math.cos(phi),
+    planetRadius * Math.sin(phi) * Math.sin(theta)
+  );
+
+  const surfaceNormal = randomPosition.clone().normalize();
+
+  // Load Eve and place her at the random spot
+  loadEve(({ eve, mixer }) => {
+    eve.position.copy(randomPosition);
+    const upVector = new THREE.Vector3(0, 1, 0);
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(upVector, surfaceNormal);
+    eve.quaternion.copy(quaternion);
+
+    randomPlanetGroup.add(eve);
+    scene.userData.eve = eve;
+    scene.userData.eveMixer = mixer;
+    console.log(`Eve placed on ${randomPlanetName} at`, randomPosition);
+  });
 }
 
 /**
