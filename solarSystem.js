@@ -37,7 +37,7 @@ const planetMap = {
   Mars: { index: 4, offsetY: 1.6 },
   Jupiter: { index: 5, offsetY: 3.4 },
   Saturn: { index: 6, offsetY: 1.5 },
-  Uranus: { index: 7, offsetY: 1.4 },
+  Uranus: { index: 7, offsetY: 2.4 },
   Neptune: { index: 8, offsetY: 2.4 },
 }
 
@@ -68,7 +68,7 @@ function main() {
     startAnimation = true
     gui.controls.updateTarget()
 
-    // attach wall-e to earth for testing
+    // Attach wall-e to earth
     const earthOrbitGroup = orbitGroups[planetMap.Earth.index]
     const earthPlanetGroup = earthOrbitGroup.children[0]
     const earthModel = earthPlanetGroup.children[0]
@@ -142,6 +142,9 @@ function initControls() {
 
     startSpaceshipAnimation() {
       if (!this.spaceshipAnimation) {
+        // Remove Wall-E from the planet
+        removeWallE()
+
         // Detach spaceship from its rotation pivot (if attached) so that it moves in world space
         if (spaceship.parent !== scene) {
           const worldPos = new THREE.Vector3()
@@ -316,25 +319,27 @@ function followSpaceship(followDistance = 5, offsetY = 1, aimDistance = 10) {
 // Follow Wall-E with the camera
 function followWallE(followDistance = 0.8, offsetY = 0.1, aimDistance = 10) {
   const wallE = scene.userData.wallE
-  const wallEWorldPosition = new THREE.Vector3()
-  wallE.getWorldPosition(wallEWorldPosition)
+  if (wallE) {
+    const wallEWorldPosition = new THREE.Vector3()
+    wallE.getWorldPosition(wallEWorldPosition)
 
-  const direction = new THREE.Vector3()
-  wallE.getWorldDirection(direction)
+    const direction = new THREE.Vector3()
+    wallE.getWorldDirection(direction)
 
-  // Positioning the camera behind Wall‑E
-  const desiredCameraPosition = wallEWorldPosition
-    .clone()
-    .sub(direction.clone().multiplyScalar(followDistance))
-  desiredCameraPosition.y += offsetY
+    // Positioning the camera behind Wall-E
+    const desiredCameraPosition = wallEWorldPosition
+      .clone()
+      .sub(direction.clone().multiplyScalar(followDistance))
+    desiredCameraPosition.y += offsetY
 
-  // Making camera look in front of Wall‑E
-  const target = wallEWorldPosition
-    .clone()
-    .add(direction.clone().multiplyScalar(aimDistance))
+    // Making camera look in front of Wall-E
+    const target = wallEWorldPosition
+      .clone()
+      .add(direction.clone().multiplyScalar(aimDistance))
 
-  camera.position.copy(desiredCameraPosition)
-  orbitControls.target.copy(target)
+    camera.position.copy(desiredCameraPosition)
+    orbitControls.target.copy(target)
+  }
 }
 
 /**
@@ -504,6 +509,8 @@ function updateSpaceshipMovement(delta) {
 
   if (gui.controls.cameraMode === "Follow Spaceship") {
     followSpaceship()
+  } else if (gui.controls.cameraMode === "Follow Wall-E") {
+    followWallE()
   }
 }
 
@@ -561,6 +568,68 @@ function updateWallEMovement(delta) {
 }
 
 /**
+ * Removes Wall-E from wherever it is in the scene
+ * */
+function removeWallE() {
+  const wallE = scene.userData.wallE
+  if (wallE?.parent) {
+    wallE.parent.remove(wallE)
+    console.log("Wall-E removed from the scene")
+    delete scene.userData.wallE
+    delete scene.userData.wallEMixer
+  }
+}
+
+/**
+ * Adds Wall-E to the planet specified by its name and resets camera mode
+ * */
+function addWallE(planet) {
+  const planetData = planetMap[planet]
+  if (!planetData) {
+    console.warn(`Planet "${planet}" not found in planetMap`)
+    return
+  }
+  const planetIndex = planetData.index
+  const planetGroup = orbitGroups[planetIndex].children[0]
+
+  // Compute the planet's y offset using its first child
+  const planetModel = planetGroup.children[0]
+  const box = new THREE.Box3().setFromObject(planetModel)
+  const size = new THREE.Vector3()
+  box.getSize(size)
+  let yOffset = size.y / 2
+  if (planet === "Uranus") {
+    // The uranus 3d model is not a perfect square, so we need to adjust the yOffset
+    yOffset -= 0.38
+  }
+
+  loadWallE(({ wallE, mixer }) => {
+    wallE.position.set(0, yOffset, 0)
+    planetGroup.add(wallE)
+    wallE.updateMatrixWorld(true)
+    scene.userData.wallE = wallE
+    scene.userData.wallEMixer = mixer
+    console.log(`Wall‑E loaded and added to ${planet}`)
+  })
+
+  // Reset the camera mode to "Follow Wall-E" if needed
+  if (gui.controls.cameraMode === "Follow Spaceship") {
+    gui.controls.cameraMode = "Follow Wall-E"
+
+    const camModeController = gui.__controllers.find(
+      (c) => c.property === "cameraMode"
+    )
+    if (camModeController) {
+      gui.remove(camModeController)
+    }
+
+    gui
+      .add(gui.controls, "cameraMode", ["Follow Wall-E", "Free Roam"])
+      .name("Camera Mode")
+  }
+}
+
+/**
  * Handles the movement of the spaceship toward its target
  */
 function handleActiveSpaceshipMovement() {
@@ -602,6 +671,8 @@ function handleActiveSpaceshipMovement() {
       spaceship.position.copy(worldPos)
 
       targetPlanet.add(spaceship)
+
+      addWallE(gui.controls.target)
     }
     return
   }
