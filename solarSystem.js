@@ -120,7 +120,7 @@ function initControls() {
     target: "Mars",
     pastTarget: "Earth",
     targetWorldPosition: new THREE.Vector3(),
-    cameraMode: "Free Roam",
+    cameraMode: "Follow Wall-E",
 
     togglePlanetAnimation() {
       this.planetAnimation = !this.planetAnimation
@@ -193,7 +193,7 @@ function initControls() {
     .onChange(controls.updateTarget)
   gui.add(controls, "planetSpeed", 0.01, 10).name("Planet Speed").step(0.01)
   gui
-    .add(controls, "cameraMode", ["Follow Spaceship", "Free Roam"])
+    .add(controls, "cameraMode", ["Follow Wall-E", "Free Roam"])
     .name("Camera Mode")
 
   gui.controls = controls
@@ -321,7 +321,7 @@ function followWallE(followDistance = 0.8, offsetY = 0.1, aimDistance = 10) {
 
   const direction = new THREE.Vector3()
   wallE.getWorldDirection(direction)
-  
+
   // Positioning the camera behind Wall‑E
   const desiredCameraPosition = wallEWorldPosition
     .clone()
@@ -333,11 +333,8 @@ function followWallE(followDistance = 0.8, offsetY = 0.1, aimDistance = 10) {
     .clone()
     .add(direction.clone().multiplyScalar(aimDistance))
 
-  // Smooth transition
-  camera.position.lerp(desiredCameraPosition, 0.1)
-  orbitControls.target.lerp(target, 0.1)
-  camera.position.lerp(desiredCameraPosition, 0.1)
-  orbitControls.target.lerp(target, 0.1)
+  camera.position.copy(desiredCameraPosition)
+  orbitControls.target.copy(target)
 }
 
 /**
@@ -518,11 +515,11 @@ function updateWallEMovement(delta) {
   if (!wallE) return
 
   if (gui.controls.cameraMode === "Follow Wall-E") {
-    followWallE();
+    followWallE()
   }
 
   const earthRadius = scene.userData.earthRadius
-  
+
   const moveSpeed = 0.5
   const turnSpeed = Math.PI / 2
   const pos = wallE.position.clone()
@@ -538,23 +535,28 @@ function updateWallEMovement(delta) {
   let forward = new THREE.Vector3(0, 0, -1)
     .applyQuaternion(wallE.quaternion)
     .normalize()
-  forward.projectOnPlane(normal).normalize();
+  forward.projectOnPlane(normal).normalize()
 
-  let moveInput = 0;
-  if (keysPressed["w"]) moveInput -= 1;
-  if (keysPressed["s"]) moveInput += 1;
+  let moveInput = 0
+  if (keysPressed["w"]) moveInput -= 1
+  if (keysPressed["s"]) moveInput += 1
 
   if (moveInput !== 0) {
-    const arcLength = moveSpeed * delta;
-    const angle = arcLength / earthRadius;
-    const moveAngle = angle * moveInput;
+    const arcLength = moveSpeed * delta
+    const angle = arcLength / earthRadius
+    const moveAngle = angle * moveInput
 
-    const rotationAxis = new THREE.Vector3().crossVectors(pos, forward).normalize();
-    wallE.position.applyAxisAngle(rotationAxis, moveAngle);
-    const rotQuat = new THREE.Quaternion().setFromAxisAngle(rotationAxis, moveAngle);
-    wallE.quaternion.premultiply(rotQuat);
-    const newNormal = wallE.position.clone().normalize();
-    wallE.up.copy(newNormal);
+    const rotationAxis = new THREE.Vector3()
+      .crossVectors(pos, forward)
+      .normalize()
+    wallE.position.applyAxisAngle(rotationAxis, moveAngle)
+    const rotQuat = new THREE.Quaternion().setFromAxisAngle(
+      rotationAxis,
+      moveAngle
+    )
+    wallE.quaternion.premultiply(rotQuat)
+    const newNormal = wallE.position.clone().normalize()
+    wallE.up.copy(newNormal)
   }
 }
 
@@ -562,7 +564,6 @@ function updateWallEMovement(delta) {
  * Handles the movement of the spaceship toward its target
  */
 function handleActiveSpaceshipMovement() {
-
   // Once the spaceship starts travelling, update camera mode option to "Follow Spaceship"
   if (gui.controls.cameraMode === "Follow Wall-E") {
     gui.controls.cameraMode = "Follow Spaceship"
@@ -574,10 +575,9 @@ function handleActiveSpaceshipMovement() {
       gui.remove(camModeController)
     }
 
-    gui.add(gui.controls, "cameraMode", [
-      "Follow Spaceship",
-      "Free Roam",
-    ]).name("Camera Mode")
+    gui
+      .add(gui.controls, "cameraMode", ["Follow Spaceship", "Free Roam"])
+      .name("Camera Mode")
   }
 
   spaceship.getWorldPosition(spaceshipWorldPosition)
