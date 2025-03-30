@@ -4,7 +4,6 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
-import { degToRad } from "three/src/math/MathUtils.js"
 import { spaceship } from "./spaceship.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
 
@@ -15,6 +14,8 @@ let targetPosition
 let rotationPivotSpaceship
 let idle
 let spaceshipWorldPosition = new THREE.Vector3()
+let spaceshipSpeed = 0.1
+let interceptionPoint = null
 
 const clock = new THREE.Clock()
 
@@ -63,7 +64,7 @@ function main() {
 }
 
 /**
- * Initializes the  camera
+ * Initializes the camera
  */
 function initCamera() {
   camera = new THREE.PerspectiveCamera(
@@ -85,7 +86,6 @@ function initControls() {
 
   const controls = {
     planetSpeed: 0.05,
-    spaceshipSpeed: 0.05,
     spaceshipAnimation: false,
     planetAnimation: true,
     target: "Mars",
@@ -98,14 +98,14 @@ function initControls() {
     },
 
     updateTarget() {
-      const targetData = planetMap[gui.controls.target]
+      const targetData = planetMap[this.target]
       if (targetData) {
         updateTargetPosition(targetData.index, targetData.offsetY)
       }
     },
 
     updateIdleAnimation() {
-      const pastData = planetMap[gui.controls.pastTarget]
+      const pastData = planetMap[this.pastTarget]
       if (pastData) {
         idle = getIdleSpeed(pastData.index)
       }
@@ -113,7 +113,41 @@ function initControls() {
 
     startSpaceshipAnimation() {
       if (!this.spaceshipAnimation) {
-        this.spaceshipAnimation = true
+        // Detach spaceship from its rotation pivot (if attached) so that it moves in world space
+        if (spaceship.parent !== scene) {
+          const worldPos = new THREE.Vector3()
+          spaceship.getWorldPosition(worldPos)
+          rotationPivotSpaceship.remove(spaceship)
+          spaceship.position.copy(worldPos)
+          scene.add(spaceship)
+        }
+        // Get the target planet data and its current world position
+        const targetData = planetMap[this.target]
+        if (targetData) {
+          const planetIndex = targetData.index
+          const offsetY = targetData.offsetY
+          let targetPlanetStart = new THREE.Vector3()
+          orbitGroups[planetIndex].children[0].getWorldPosition(
+            targetPlanetStart
+          )
+          targetPlanetStart.y += offsetY
+          const planetAngularSpeed =
+            orbitGroups[planetIndex].userData.orbitSpeed * this.planetSpeed
+          // Use the spaceship's world position for computation
+          const spaceshipStart = new THREE.Vector3()
+          spaceship.getWorldPosition(spaceshipStart)
+          const result = computeInterception(
+            spaceshipStart,
+            targetPlanetStart,
+            planetAngularSpeed,
+            0.1
+          )
+          if (result) {
+            interceptionPoint = result.interceptionPoint
+            targetPosition = interceptionPoint.clone()
+            this.spaceshipAnimation = true
+          }
+        }
       }
     },
   }
@@ -129,10 +163,6 @@ function initControls() {
     .add(controls, "target", Object.keys(planetMap))
     .onChange(controls.updateTarget)
   gui.add(controls, "planetSpeed", 0.01, 10).name("Planet Speed").step(0.01)
-  gui
-    .add(controls, "spaceshipSpeed", 0.01, 1)
-    .name("Spaceship Speed")
-    .step(0.01)
   gui
     .add(controls, "cameraMode", ["Follow Spaceship", "Free Roam"])
     .name("Camera Mode")
@@ -298,6 +328,64 @@ function getIdleSpeed(planetIndex) {
 }
 
 /**
+ * Computes the interception point, time, and best direction for the spaceship
+ */
+function computeInterception(
+  spaceshipStart,
+  planetStart,
+  planetAngularSpeed,
+  spaceshipSpeed = 0.1
+) {
+  // f(t) returns the difference between the distance from spaceshipStart to the planet's position at time t and the distance the spaceship can travel in time t
+  function compareTotalAndPossibleDistance(t) {
+    const rotatedPlanet = planetStart.clone()
+    const angle = planetAngularSpeed * t
+    rotatedPlanet.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle)
+    return spaceshipStart.distanceTo(rotatedPlanet) - spaceshipSpeed * t
+  }
+
+  let minTimeThreshold = 0
+  let maxTimeThreshold = 1000
+
+  if (compareTotalAndPossibleDistance(maxTimeThreshold) > 0) {
+    console.warn(
+      "Interception not found within the time bounds. Consider increasing the upper bound."
+    )
+    return null
+  }
+
+  let averageTime
+  for (let i = 0; i < 50; i++) {
+    averageTime = (minTimeThreshold + maxTimeThreshold) / 2
+    const distanceDifference = compareTotalAndPossibleDistance(averageTime)
+    if (Math.abs(distanceDifference) < 1e-6) break
+    if (distanceDifference > 0) {
+      minTimeThreshold = averageTime
+    } else {
+      maxTimeThreshold = averageTime
+    }
+  }
+
+  // Compute the interception point by rotating the planet's start position by the found angle
+  const interceptionPoint = planetStart.clone()
+  interceptionPoint.applyAxisAngle(
+    new THREE.Vector3(0, 1, 0),
+    planetAngularSpeed * averageTime
+  )
+  // Determine the best direction from the spaceship's start to the interception point
+  const bestDirection = interceptionPoint
+    .clone()
+    .sub(spaceshipStart)
+    .normalize()
+
+  return {
+    interceptionPoint,
+    interceptionTime: averageTime,
+    bestDirection,
+  }
+}
+
+/**
  * Main animation loop
  */
 function animate() {
@@ -350,8 +438,9 @@ function updatePlanets(delta) {
  * Update spaceship movement based on the current animation mode
  * */
 function updateSpaceshipMovement(delta) {
-  // Always update the target in case it has changed
-  gui.controls.updateTarget()
+  if (!gui.controls.spaceshipAnimation) {
+    gui.controls.updateTarget()
+  }
 
   if (gui.controls.spaceshipAnimation) {
     handleActiveSpaceshipMovement()
@@ -374,15 +463,28 @@ function handleActiveSpaceshipMovement() {
     .normalize()
   const distance = spaceshipWorldPosition.distanceTo(targetPosition)
 
-  // If spaceship has reached the target, stop the animation
+  // When the spaceship is very close, "land" it on the target planet
   if (distance <= 0.1) {
     gui.controls.spaceshipAnimation = false
     gui.controls.pastTarget = gui.controls.target
+
+    const targetData = planetMap[gui.controls.target]
+    if (targetData) {
+      const planetIndex = targetData.index
+      const targetPlanet = orbitGroups[planetIndex].children[0]
+
+      const worldPos = new THREE.Vector3()
+      spaceship.getWorldPosition(worldPos)
+      targetPlanet.worldToLocal(worldPos)
+      spaceship.position.copy(worldPos)
+
+      targetPlanet.add(spaceship)
+    }
     return
   }
 
   orientSpaceshipToTarget(spaceshipWorldPosition, targetPosition)
-  spaceship.position.add(direction.multiplyScalar(gui.controls.spaceshipSpeed))
+  spaceship.position.add(direction.multiplyScalar(spaceshipSpeed))
 }
 
 /**
