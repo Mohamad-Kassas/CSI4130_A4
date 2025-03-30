@@ -13,7 +13,7 @@ spaceship.userData.exhaustEmitters = exhaustEmitters;
 
 const mtlLoader = new MTLLoader();
 
-mtlLoader.load('models/spaceship.mtl', (materials) => {
+mtlLoader.load('models/spaceship/spaceship.mtl', (materials) => {
   console.log('MTL loaded:', materials);
   materials.preload();
 
@@ -21,7 +21,7 @@ mtlLoader.load('models/spaceship.mtl', (materials) => {
   // Applying the MTL materials to the OBJ
   objLoader.setMaterials(materials);
 
-  objLoader.load('models/spaceship.obj', (object) => {
+  objLoader.load('models/spaceship/spaceship.obj', (object) => {
     console.log('OBJ loaded:', object);
 
     const box = new THREE.Box3().setFromObject(object);

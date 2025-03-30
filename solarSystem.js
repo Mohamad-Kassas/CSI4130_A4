@@ -6,6 +6,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import { spaceship } from "./spaceship.js"
 import { loadSolarSystem } from "./solarSystemLoader.js"
+import { loadWallE } from "./wallE.js"
 
 let scene, camera, renderer, composer, gui, orbitControls
 let orbitGroups = []
@@ -18,6 +19,16 @@ let spaceshipSpeed = 0.1
 let interceptionPoint = null
 
 const clock = new THREE.Clock()
+
+const keysPressed = {}
+
+window.addEventListener("keydown", (event) => {
+  keysPressed[event.key.toLowerCase()] = true
+})
+
+window.addEventListener("keyup", (event) => {
+  keysPressed[event.key.toLowerCase()] = false
+})
 
 const planetMap = {
   Mercury: { index: 1, offsetY: 1.3 },
@@ -56,6 +67,24 @@ function main() {
   }).then(() => {
     startAnimation = true
     gui.controls.updateTarget()
+
+    // attach wall-e to earth for testing
+    const earthOrbitGroup = orbitGroups[planetMap.Earth.index]
+    const earthPlanetGroup = earthOrbitGroup.children[0]
+    const earthModel = earthPlanetGroup.children[0]
+
+    const box = new THREE.Box3().setFromObject(earthModel)
+    const size = new THREE.Vector3()
+    box.getSize(size)
+    const yOffset = size.y / 2
+    scene.userData.earthRadius = yOffset
+
+    loadWallE(({ wallE, mixer }) => {
+      wallE.position.set(0, yOffset, 0)
+      earthPlanetGroup.add(wallE)
+      scene.userData.wallE = wallE
+      scene.userData.wallEMixer = mixer
+    })
   })
 
   scene.add(createStarField())
@@ -247,7 +276,7 @@ function createStarField() {
   )
 
   // Load disc texture for stars
-  const disc = new THREE.TextureLoader().load("shader/disc.png")
+  const disc = new THREE.TextureLoader().load("models/disc.png")
 
   const starMaterial = new THREE.PointsMaterial({
     size: 1,
@@ -280,6 +309,33 @@ function followSpaceship(followDistance = 5, offsetY = 1, aimDistance = 10) {
     .sub(backward.clone().multiplyScalar(aimDistance))
 
   // Smooth transition
+  camera.position.lerp(desiredCameraPosition, 0.1)
+  orbitControls.target.lerp(target, 0.1)
+}
+
+// Follow Wall-E with the camera
+function followWallE(followDistance = 0.8, offsetY = 0.1, aimDistance = 10) {
+  const wallE = scene.userData.wallE
+  const wallEWorldPosition = new THREE.Vector3()
+  wallE.getWorldPosition(wallEWorldPosition)
+
+  const direction = new THREE.Vector3()
+  wallE.getWorldDirection(direction)
+  
+  // Positioning the camera behind Wall‑E
+  const desiredCameraPosition = wallEWorldPosition
+    .clone()
+    .sub(direction.clone().multiplyScalar(followDistance))
+  desiredCameraPosition.y += offsetY
+
+  // Making camera look in front of Wall‑E
+  const target = wallEWorldPosition
+    .clone()
+    .add(direction.clone().multiplyScalar(aimDistance))
+
+  // Smooth transition
+  camera.position.lerp(desiredCameraPosition, 0.1)
+  orbitControls.target.lerp(target, 0.1)
   camera.position.lerp(desiredCameraPosition, 0.1)
   orbitControls.target.lerp(target, 0.1)
 }
@@ -397,6 +453,7 @@ function animate() {
   updateExhaust(delta)
   updatePlanets(delta)
   updateSpaceshipMovement(delta)
+  updateWallEMovement(delta)
   orbitControls.update()
   composer.render()
 }
@@ -454,9 +511,75 @@ function updateSpaceshipMovement(delta) {
 }
 
 /**
+ * Update Wall-E movement
+ * */
+function updateWallEMovement(delta) {
+  const wallE = scene.userData.wallE
+  if (!wallE) return
+
+  if (gui.controls.cameraMode === "Follow Wall-E") {
+    followWallE();
+  }
+
+  const earthRadius = scene.userData.earthRadius
+  
+  const moveSpeed = 0.5
+  const turnSpeed = Math.PI / 2
+  const pos = wallE.position.clone()
+  const normal = pos.clone().normalize()
+
+  if (keysPressed["a"]) {
+    wallE.rotateOnWorldAxis(normal, turnSpeed * delta)
+  }
+  if (keysPressed["d"]) {
+    wallE.rotateOnWorldAxis(normal, -turnSpeed * delta)
+  }
+
+  let forward = new THREE.Vector3(0, 0, -1)
+    .applyQuaternion(wallE.quaternion)
+    .normalize()
+  forward.projectOnPlane(normal).normalize();
+
+  let moveInput = 0;
+  if (keysPressed["w"]) moveInput -= 1;
+  if (keysPressed["s"]) moveInput += 1;
+
+  if (moveInput !== 0) {
+    const arcLength = moveSpeed * delta;
+    const angle = arcLength / earthRadius;
+    const moveAngle = angle * moveInput;
+
+    const rotationAxis = new THREE.Vector3().crossVectors(pos, forward).normalize();
+    wallE.position.applyAxisAngle(rotationAxis, moveAngle);
+    const rotQuat = new THREE.Quaternion().setFromAxisAngle(rotationAxis, moveAngle);
+    wallE.quaternion.premultiply(rotQuat);
+    const newNormal = wallE.position.clone().normalize();
+    wallE.up.copy(newNormal);
+  }
+}
+
+/**
  * Handles the movement of the spaceship toward its target
  */
 function handleActiveSpaceshipMovement() {
+
+  // Once the spaceship starts travelling, update camera mode option to "Follow Spaceship"
+  if (gui.controls.cameraMode === "Follow Wall-E") {
+    gui.controls.cameraMode = "Follow Spaceship"
+
+    const camModeController = gui.__controllers.find(
+      (c) => c.property === "cameraMode"
+    )
+    if (camModeController) {
+      gui.remove(camModeController)
+    }
+
+    gui.add(gui.controls, "cameraMode", [
+      "Follow Spaceship",
+      "Free Roam",
+    ]).name("Camera Mode")
+  }
+
   spaceship.getWorldPosition(spaceshipWorldPosition)
   const direction = new THREE.Vector3()
     .subVectors(targetPosition, spaceshipWorldPosition)
