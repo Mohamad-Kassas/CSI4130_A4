@@ -166,21 +166,29 @@ function initControls() {
             targetPlanetStart
           )
           targetPlanetStart.y += offsetY
-          const planetAngularSpeed =
-            orbitGroups[planetIndex].userData.orbitSpeed * this.planetSpeed
-          // Use the spaceship's world position for computation
-          const spaceshipStart = new THREE.Vector3()
-          spaceship.getWorldPosition(spaceshipStart)
-          const result = computeInterception(
-            spaceshipStart,
-            targetPlanetStart,
-            planetAngularSpeed,
-            0.1
-          )
-          if (result) {
-            interceptionPoint = result.interceptionPoint
-            targetPosition = interceptionPoint.clone()
+          
+          if (!this.planetAnimation) {
+            // Planet animation is off: go directly to the planet's current position
+            targetPosition = targetPlanetStart.clone()
             this.spaceshipAnimation = true
+          } else {
+            // Planet animation is on: use the interception calculation as before
+            const planetAngularSpeed =
+              orbitGroups[planetIndex].userData.orbitSpeed * this.planetSpeed
+          // Use the spaceship's world position for computation
+            const spaceshipStart = new THREE.Vector3()
+            spaceship.getWorldPosition(spaceshipStart)
+            const result = computeInterception(
+              spaceshipStart,
+              targetPlanetStart,
+              planetAngularSpeed,
+              0.1
+            )
+            if (result) {
+              interceptionPoint = result.interceptionPoint
+              targetPosition = interceptionPoint.clone()
+              this.spaceshipAnimation = true
+            }
           }
         }
       }
@@ -302,46 +310,46 @@ function createEve() {
   // Select a random planet
   const planetNames = Object.keys(planetMap).filter(
     name => name !== "Earth" && name !== "Uranus"
-  );
+  )
   const randomPlanetName =
-    planetNames[Math.floor(Math.random() * planetNames.length)];
-  const randomPlanetData = planetMap[randomPlanetName];
-  const randomOrbitGroup = orbitGroups[randomPlanetData.index];
-  const randomPlanetGroup = randomOrbitGroup.children[0];
-  const randomPlanetModel = randomPlanetGroup.children[0];
+    planetNames[Math.floor(Math.random() * planetNames.length)]
+  const randomPlanetData = planetMap[randomPlanetName]
+  const randomOrbitGroup = orbitGroups[randomPlanetData.index]
+  const randomPlanetGroup = randomOrbitGroup.children[0]
+  const randomPlanetModel = randomPlanetGroup.children[0]
 
   // Get the planet's bounding box and estimate its radius
-  const randomBox = new THREE.Box3().setFromObject(randomPlanetModel);
-  const randomSize = new THREE.Vector3();
-  randomBox.getSize(randomSize);
-  const planetRadius = randomSize.y / 2;
+  const randomBox = new THREE.Box3().setFromObject(randomPlanetModel)
+  const randomSize = new THREE.Vector3()
+  randomBox.getSize(randomSize)
+  const planetRadius = randomSize.y / 2
 
   // Generate a random point on the sphere’s surface
-  const minPhi = Math.PI / 4;
-  const maxPhi = (3 * Math.PI) / 4;
-  const phi = Math.random() * (maxPhi - minPhi) + minPhi;
-  const theta = Math.random() * Math.PI * 2;
+  const minPhi = Math.PI / 4
+  const maxPhi = (3 * Math.PI) / 4
+  const phi = Math.random() * (maxPhi - minPhi) + minPhi
+  const theta = Math.random() * Math.PI * 2
 
   const randomPosition = new THREE.Vector3(
     planetRadius * Math.sin(phi) * Math.cos(theta),
     planetRadius * Math.cos(phi),
     planetRadius * Math.sin(phi) * Math.sin(theta)
-  );
+  )
 
-  const surfaceNormal = randomPosition.clone().normalize();
+  const surfaceNormal = randomPosition.clone().normalize()
 
   // Load Eve and place her at the random spot
   loadEve(({ eve, mixer }) => {
-    eve.position.copy(randomPosition);
-    const upVector = new THREE.Vector3(0, 1, 0);
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(upVector, surfaceNormal);
-    eve.quaternion.copy(quaternion);
+    eve.position.copy(randomPosition)
+    const upVector = new THREE.Vector3(0, 1, 0)
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(upVector, surfaceNormal)
+    eve.quaternion.copy(quaternion)
 
-    randomPlanetGroup.add(eve);
-    scene.userData.eve = eve;
-    scene.userData.eveMixer = mixer;
-    console.log(`Eve placed on ${randomPlanetName} at`, randomPosition);
-  });
+    randomPlanetGroup.add(eve)
+    scene.userData.eve = eve
+    scene.userData.eveMixer = mixer
+    console.log(`Eve placed on ${randomPlanetName} at`, randomPosition)
+  })
 }
 
 /**
